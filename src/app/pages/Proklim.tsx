@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { MapPin, Info } from "lucide-react";
 import { proklimData } from "../data/mockData";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { ImageWithFallback } from "../components/ui/ImageWithFallback";
 import "leaflet/dist/leaflet.css";
 
 export default function Proklim() {

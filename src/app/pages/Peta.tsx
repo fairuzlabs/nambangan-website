@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { MapPin, ShoppingBag, Leaf, Music, X, Phone, Clock, Tag, ArrowRight, ChevronDown } from "lucide-react";
 import { proklimData, umkmData, kesenianData } from "../data/mockData";
 import type { ProklimLocation, UMKMProduct, KesenianLocation } from "../data/mockData";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { ImageWithFallback } from "../components/ui/ImageWithFallback";
 import { Link } from "react-router";
 import "leaflet/dist/leaflet.css";
 

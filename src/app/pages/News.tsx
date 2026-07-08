@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { Calendar, User, Tag } from "lucide-react";
 import { newsData } from "../data/mockData";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { ImageWithFallback } from "../components/ui/ImageWithFallback";
 import { useState } from "react";
 
 export default function News() {

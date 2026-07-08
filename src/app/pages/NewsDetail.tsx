@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router";
 import { Calendar, User, ArrowLeft, Tag } from "lucide-react";
 import { newsData } from "../data/mockData";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { ImageWithFallback } from "../components/ui/ImageWithFallback";
 
 export default function NewsDetail() {
   const { id } = useParams();

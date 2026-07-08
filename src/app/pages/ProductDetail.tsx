@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router";
 import { ArrowLeft, Phone, MapPin, Tag, ShoppingBag } from "lucide-react";
 import { umkmData } from "../data/mockData";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { ImageWithFallback } from "../components/ui/ImageWithFallback";
 
 export default function ProductDetail() {
   const { id } = useParams();

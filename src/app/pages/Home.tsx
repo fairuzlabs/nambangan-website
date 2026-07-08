@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { Newspaper, MapPin, ArrowRight, Calendar, Users, Sprout, ShoppingBag, Headphones, Archive, ChevronDown } from "lucide-react";
 import { newsData } from "../data/mockData";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { ImageWithFallback } from "../components/ui/ImageWithFallback";
 
 const HERO_IMG = "https://images.unsplash.com/photo-1565583673900-1cd9320f6c8b?w=1920&h=1080&fit=crop&auto=format&q=80";
 

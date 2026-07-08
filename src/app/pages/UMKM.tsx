@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { Phone, Tag } from "lucide-react";
 import { umkmData } from "../data/mockData";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { ImageWithFallback } from "../components/ui/ImageWithFallback";
 import { useState } from "react";
 
 export default function UMKM() {
