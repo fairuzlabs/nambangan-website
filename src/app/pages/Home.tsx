@@ -214,15 +214,6 @@ export default function Home() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             </div>
-            {/* Three colored dots legend */}
-            <div className="absolute bottom-6 right-8 hidden sm:flex items-center gap-5">
-              {[["#506535", "Proklim"], ["#b86878", "UMKM"], ["#c8953a", "Kesenian"]].map(([color, label]) => (
-                <div key={label} className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full border-2 border-white/50" style={{ background: color }} />
-                  <span className="text-white/60 text-xs font-medium">{label}</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>

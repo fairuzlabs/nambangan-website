@@ -413,7 +413,7 @@ export default function Peta() {
 
       {/* Mobile detail panel overlay */}
       {selected && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/40">
+        <div className="md:hidden fixed inset-0 z-[1010] flex flex-col justify-end bg-black/40">
           <div className="bg-white rounded-t-3xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 bg-gray-300 rounded-full" />

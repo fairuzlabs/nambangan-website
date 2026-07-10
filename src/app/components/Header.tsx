@@ -30,7 +30,7 @@ export default function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
+      className={`sticky top-0 z-[1001] transition-all duration-300 ${
         scrolled
           ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-200"
           : "bg-white border-b border-gray-200"
@@ -44,7 +44,7 @@ export default function Header() {
             <div className="w-9 h-9 bg-gradient-to-br from-green-600 to-green-800 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-green-200 transition-shadow">
               <Leaf className="w-4.5 h-4.5 text-white" />
             </div>
-            <div className="hidden sm:block">
+            <div>
               <div className="font-bold text-gray-900 text-sm leading-tight" style={{ fontFamily: "var(--font-serif)" }}>
                 RW 18 Nambangan
               </div>
@@ -91,7 +91,7 @@ export default function Header() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden bg-white border-t border-gray-100 px-4 py-3 space-y-0.5 shadow-lg">
+        <div className="absolute top-16 left-0 right-0 md:hidden bg-white border-t border-gray-100 px-4 py-3 space-y-0.5 shadow-lg">
           {NAV.map(({ path, label, icon: Icon }) => {
             const active = isActive(path);
             return (
