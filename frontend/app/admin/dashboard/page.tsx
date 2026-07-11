@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Newspaper, Archive, Headphones, Map, TrendingUp, Eye, Users, ArrowUpRight, Clock, Leaf } from "lucide-react";
 import { newsData, arsipData, podcastData, proklimData, umkmData, kesenianData } from "@/data/mockData";

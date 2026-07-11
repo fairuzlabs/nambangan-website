@@ -42,7 +42,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated()) router.push("/admin/login");
+    if (!isAuthenticated() && pathname !== "/admin/login") router.push("/admin/login");
   }, [pathname]);
 
   useEffect(() => setSidebarOpen(false), [pathname]);
@@ -126,6 +126,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     </div>
   );
+
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">

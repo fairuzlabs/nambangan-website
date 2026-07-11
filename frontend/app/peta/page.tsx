@@ -192,8 +192,12 @@ export default function Peta() {
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
+    let active = true;
 
     import("leaflet").then((L) => {
+      if (!active) return;
+      if (mapInstanceRef.current || (mapRef.current as any)?._leaflet_id) return;
+
       // @ts-ignore
       delete L.Icon.Default.prototype._getIconUrl;
 
@@ -224,6 +228,7 @@ export default function Peta() {
     });
 
     return () => {
+      active = false;
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;

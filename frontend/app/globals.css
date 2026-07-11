@@ -1,80 +1,91 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Nunito:wght@400;500;600;700;800&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
-/*
-  CATATAN MIGRASI (baca ini):
-  File tema asli project Vite pakai sintaks Tailwind v4 (@theme inline,
-  @custom-variant). Project Next.js kamu terpasang Tailwind v3 (dikonfirmasi
-  dari error build: normalizeTailwindDirectives.js hanya ada di v3).
-  Sintaks v4 itu SAYA HAPUS di file ini karena tidak dikenali v3 dan akan
-  bikin build gagal lagi. Sebagai gantinya:
+@import "tailwindcss";
 
-  1. Warna-warna di :root / .dark tetap dipertahankan sebagai CSS variable
-     biasa (aman, tidak butuh Tailwind versi berapa pun).
-  2. Supaya class-class shadcn seperti `bg-primary`, `text-foreground`,
-     `border-border` ikut berubah warna sesuai tema RW Nambangan (bukan
-     warna default shadcn), TAMBAHKAN blok `theme.extend.colors` berikut
-     ke tailwind.config.ts kamu:
+@custom-variant dark (&:is(.dark *));
 
-     colors: {
-       background: "var(--background)",
-       foreground: "var(--foreground)",
-       card: { DEFAULT: "var(--card)", foreground: "var(--card-foreground)" },
-       popover: { DEFAULT: "var(--popover)", foreground: "var(--popover-foreground)" },
-       primary: { DEFAULT: "var(--primary)", foreground: "var(--primary-foreground)" },
-       secondary: { DEFAULT: "var(--secondary)", foreground: "var(--secondary-foreground)" },
-       muted: { DEFAULT: "var(--muted)", foreground: "var(--muted-foreground)" },
-       accent: { DEFAULT: "var(--accent)", foreground: "var(--accent-foreground)" },
-       destructive: { DEFAULT: "var(--destructive)", foreground: "var(--destructive-foreground)" },
-       border: "var(--border)",
-       input: "var(--input)",
-       ring: "var(--ring)",
-       sidebar: {
-         DEFAULT: "var(--sidebar)",
-         foreground: "var(--sidebar-foreground)",
-         primary: "var(--sidebar-primary)",
-         "primary-foreground": "var(--sidebar-primary-foreground)",
-         accent: "var(--sidebar-accent)",
-         "accent-foreground": "var(--sidebar-accent-foreground)",
-         border: "var(--sidebar-border)",
-         ring: "var(--sidebar-ring)",
-       },
-     },
-     borderRadius: {
-       sm: "calc(var(--radius) - 4px)",
-       md: "calc(var(--radius) - 2px)",
-       lg: "var(--radius)",
-       xl: "calc(var(--radius) + 4px)",
-     },
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
-  3. Halaman-halaman hasil migrasi banyak pakai `bg-green-600`,
-     `text-green-700`, dll — itu masih warna HIJAU BAWAAN Tailwind, BUKAN
-     warna sage/olive khas desain RW Nambangan (project lama meng-override
-     palet green/gray/red lewat @theme, yang tidak saya bawa karena
-     v4-only). Ini TIDAK bikin build gagal, cuma warnanya beda dari desain
-     asli. Kalau mau sama persis, tambahkan override ini juga ke
-     tailwind.config.ts di `theme.extend.colors`:
+  /* Override Tailwind green → sage olive */
+  --color-green-50: #f0f4e8;
+  --color-green-100: #dde8c5;
+  --color-green-200: #c0d49f;
+  --color-green-300: #9ebc78;
+  --color-green-400: #80a458;
+  --color-green-500: #668a42;
+  --color-green-600: #506535;
+  --color-green-700: #3f5029;
+  --color-green-800: #2f3d1f;
+  --color-green-900: #1e2912;
 
-     green: {
-       50: "#f0f4e8", 100: "#dde8c5", 200: "#c0d49f", 300: "#9ebc78",
-       400: "#80a458", 500: "#668a42", 600: "#506535", 700: "#3f5029",
-       800: "#2f3d1f", 900: "#1e2912",
-     },
-     gray: {
-       50: "#faf7f2", 100: "#f3ede3", 200: "#e5ddd0", 300: "#d0c7b8",
-       400: "#b3a898", 500: "#8a7d6d", 600: "#6a5d50", 700: "#4c4038",
-       800: "#342e28", 900: "#1e1812",
-     },
-     red: {
-       50: "#fdf0f2", 100: "#f8d8de", 200: "#f0b0bc", 300: "#e48898",
-       400: "#d46878", 500: "#c05068", 600: "#a84060", 700: "#883050",
-       800: "#602038", 900: "#401020",
-     },
-*/
+  /* Override Tailwind gray → warm neutral */
+  --color-gray-50: #faf7f2;
+  --color-gray-100: #f3ede3;
+  --color-gray-200: #e5ddd0;
+  --color-gray-300: #d0c7b8;
+  --color-gray-400: #b3a898;
+  --color-gray-500: #8a7d6d;
+  --color-gray-600: #6a5d50;
+  --color-gray-700: #4c4038;
+  --color-gray-800: #342e28;
+  --color-gray-900: #1e1812;
+
+  /* Dusty rose palette mapped to red for badge/accent use */
+  --color-red-50: #fdf0f2;
+  --color-red-100: #f8d8de;
+  --color-red-200: #f0b0bc;
+  --color-red-300: #e48898;
+  --color-red-400: #d46878;
+  --color-red-500: #c05068;
+  --color-red-600: #a84060;
+  --color-red-700: #883050;
+  --color-red-800: #602038;
+  --color-red-900: #401020;
+
+  /* Font families */
+  --font-sans: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Lora', ui-serif, Georgia, serif;
+}
+
 
 :root {
   --font-size: 16px;

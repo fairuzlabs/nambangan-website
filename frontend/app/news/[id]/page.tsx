@@ -3,8 +3,8 @@ import { Calendar, User, ArrowLeft, Tag } from "lucide-react";
 import { newsData } from "@/data/mockData";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
-export default function NewsDetail({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function NewsDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const news = newsData.find((n) => n.id === id);
 
   if (!news) {

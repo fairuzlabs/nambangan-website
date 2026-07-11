@@ -3,8 +3,8 @@ import { ArrowLeft, Phone, MapPin, Tag, ShoppingBag } from "lucide-react";
 import { umkmData } from "@/data/mockData";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
-export default function ProductDetail({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const product = umkmData.find((p) => p.id === id);
 
   if (!product) {
