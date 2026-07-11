@@ -1,3 +1,194 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Nunito:wght@400;500;600;700;800&display=swap');
+@import 'leaflet/dist/leaflet.css';
+
+/*
+  CATATAN MIGRASI (baca ini):
+  File tema asli project Vite pakai sintaks Tailwind v4 (@theme inline,
+  @custom-variant). Project Next.js kamu terpasang Tailwind v3 (dikonfirmasi
+  dari error build: normalizeTailwindDirectives.js hanya ada di v3).
+  Sintaks v4 itu SAYA HAPUS di file ini karena tidak dikenali v3 dan akan
+  bikin build gagal lagi. Sebagai gantinya:
+
+  1. Warna-warna di :root / .dark tetap dipertahankan sebagai CSS variable
+     biasa (aman, tidak butuh Tailwind versi berapa pun).
+  2. Supaya class-class shadcn seperti `bg-primary`, `text-foreground`,
+     `border-border` ikut berubah warna sesuai tema RW Nambangan (bukan
+     warna default shadcn), TAMBAHKAN blok `theme.extend.colors` berikut
+     ke tailwind.config.ts kamu:
+
+     colors: {
+       background: "var(--background)",
+       foreground: "var(--foreground)",
+       card: { DEFAULT: "var(--card)", foreground: "var(--card-foreground)" },
+       popover: { DEFAULT: "var(--popover)", foreground: "var(--popover-foreground)" },
+       primary: { DEFAULT: "var(--primary)", foreground: "var(--primary-foreground)" },
+       secondary: { DEFAULT: "var(--secondary)", foreground: "var(--secondary-foreground)" },
+       muted: { DEFAULT: "var(--muted)", foreground: "var(--muted-foreground)" },
+       accent: { DEFAULT: "var(--accent)", foreground: "var(--accent-foreground)" },
+       destructive: { DEFAULT: "var(--destructive)", foreground: "var(--destructive-foreground)" },
+       border: "var(--border)",
+       input: "var(--input)",
+       ring: "var(--ring)",
+       sidebar: {
+         DEFAULT: "var(--sidebar)",
+         foreground: "var(--sidebar-foreground)",
+         primary: "var(--sidebar-primary)",
+         "primary-foreground": "var(--sidebar-primary-foreground)",
+         accent: "var(--sidebar-accent)",
+         "accent-foreground": "var(--sidebar-accent-foreground)",
+         border: "var(--sidebar-border)",
+         ring: "var(--sidebar-ring)",
+       },
+     },
+     borderRadius: {
+       sm: "calc(var(--radius) - 4px)",
+       md: "calc(var(--radius) - 2px)",
+       lg: "var(--radius)",
+       xl: "calc(var(--radius) + 4px)",
+     },
+
+  3. Halaman-halaman hasil migrasi banyak pakai `bg-green-600`,
+     `text-green-700`, dll — itu masih warna HIJAU BAWAAN Tailwind, BUKAN
+     warna sage/olive khas desain RW Nambangan (project lama meng-override
+     palet green/gray/red lewat @theme, yang tidak saya bawa karena
+     v4-only). Ini TIDAK bikin build gagal, cuma warnanya beda dari desain
+     asli. Kalau mau sama persis, tambahkan override ini juga ke
+     tailwind.config.ts di `theme.extend.colors`:
+
+     green: {
+       50: "#f0f4e8", 100: "#dde8c5", 200: "#c0d49f", 300: "#9ebc78",
+       400: "#80a458", 500: "#668a42", 600: "#506535", 700: "#3f5029",
+       800: "#2f3d1f", 900: "#1e2912",
+     },
+     gray: {
+       50: "#faf7f2", 100: "#f3ede3", 200: "#e5ddd0", 300: "#d0c7b8",
+       400: "#b3a898", 500: "#8a7d6d", 600: "#6a5d50", 700: "#4c4038",
+       800: "#342e28", 900: "#1e1812",
+     },
+     red: {
+       50: "#fdf0f2", 100: "#f8d8de", 200: "#f0b0bc", 300: "#e48898",
+       400: "#d46878", 500: "#c05068", 600: "#a84060", 700: "#883050",
+       800: "#602038", 900: "#401020",
+     },
+*/
+
+:root {
+  --font-size: 16px;
+  --background: #faf7f2;
+  --foreground: #1e1812;
+  --card: #fffcf6;
+  --card-foreground: #1e1812;
+  --popover: #fffcf6;
+  --popover-foreground: #1e1812;
+  --primary: #506535;
+  --primary-foreground: #fffcf6;
+  --secondary: #b86878;
+  --secondary-foreground: #fffcf6;
+  --muted: #f0eade;
+  --muted-foreground: #7a6d5e;
+  --accent: #e8dfd0;
+  --accent-foreground: #1e1812;
+  --destructive: #c0394a;
+  --destructive-foreground: #ffffff;
+  --border: rgba(80, 55, 30, 0.14);
+  --input: transparent;
+  --input-background: #f3ede3;
+  --switch-background: #c8bfb0;
+  --font-weight-medium: 600;
+  --font-weight-normal: 400;
+  --ring: #506535;
+  --chart-1: #506535;
+  --chart-2: #b86878;
+  --chart-3: #7a8760;
+  --chart-4: #c17888;
+  --chart-5: #8fa060;
+  --radius: 0.75rem;
+  --sidebar: #f3ede3;
+  --sidebar-foreground: #1e1812;
+  --sidebar-primary: #506535;
+  --sidebar-primary-foreground: #fffcf6;
+  --sidebar-accent: #e8dfd0;
+  --sidebar-accent-foreground: #1e1812;
+  --sidebar-border: rgba(80, 55, 30, 0.14);
+  --sidebar-ring: #506535;
+  --font-sans: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Lora', ui-serif, Georgia, serif;
+}
+
+.dark {
+  --background: #111009;
+  --foreground: #f5f0e8;
+  --card: #1a1810;
+  --card-foreground: #f5f0e8;
+  --popover: #1a1810;
+  --popover-foreground: #f5f0e8;
+  --primary: #8fa060;
+  --primary-foreground: #111009;
+  --secondary: #c17888;
+  --secondary-foreground: #111009;
+  --muted: #2a2620;
+  --muted-foreground: #a09080;
+  --accent: #2a2620;
+  --accent-foreground: #f5f0e8;
+  --destructive: #c0394a;
+  --destructive-foreground: #ffffff;
+  --border: rgba(200, 180, 140, 0.15);
+  --input: rgba(200, 180, 140, 0.15);
+  --ring: #8fa060;
+  --sidebar: #1a1810;
+  --sidebar-foreground: #f5f0e8;
+  --sidebar-primary: #8fa060;
+  --sidebar-primary-foreground: #111009;
+  --sidebar-accent: #2a2620;
+  --sidebar-accent-foreground: #f5f0e8;
+  --sidebar-border: rgba(200, 180, 140, 0.15);
+  --sidebar-ring: #8fa060;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  h4 {
+    font-family: var(--font-sans);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-family: var(--font-sans);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
