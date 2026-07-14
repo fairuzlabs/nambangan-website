@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Archive, FileText, Image, BookOpen, Download, Filter, X, ChevronLeft, ChevronRight, Search, Calendar, Tag } from "lucide-react";
-import { arsipData, type ArsipItem } from "@/data/mockData";
+import { api, type ArsipItem } from "@/lib/api";
+import { useEffect } from "react";
 
 const TYPE_LABELS: Record<ArsipItem["type"], string> = {
   foto: "Foto Dokumentasi",
@@ -164,11 +165,28 @@ export default function Arsip() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeType, setActiveType] = useState<ArsipItem["type"] | "Semua">("Semua");
   const [activeCategory, setActiveCategory] = useState("Semua");
+  const [archives, setArchives] = useState<ArsipItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const res = await api.getArchives();
+        setArchives(res);
+      } catch (err) {
+        console.error("Gagal memuat data arsip:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   const types: Array<ArsipItem["type"] | "Semua"> = ["Semua", "foto", "laporan", "catatan"];
-  const categories = ["Semua", ...Array.from(new Set(arsipData.map(a => a.category)))];
+  const categories = ["Semua", ...Array.from(new Set(archives.map(a => a.category)))];
 
-  const filtered = arsipData.filter(item => {
+  const filtered = archives.filter(item => {
     const matchType = activeType === "Semua" || item.type === activeType;
     const matchCategory = activeCategory === "Semua" || item.category === activeCategory;
     const q = searchQuery.toLowerCase();
@@ -177,9 +195,9 @@ export default function Arsip() {
   });
 
   const counts = {
-    foto: arsipData.filter(a => a.type === "foto").length,
-    laporan: arsipData.filter(a => a.type === "laporan").length,
-    catatan: arsipData.filter(a => a.type === "catatan").length,
+    foto: archives.filter(a => a.type === "foto").length,
+    laporan: archives.filter(a => a.type === "laporan").length,
+    catatan: archives.filter(a => a.type === "catatan").length,
   };
 
   return (
@@ -275,7 +293,7 @@ export default function Arsip() {
         {/* Results count */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-gray-500">
-            Menampilkan <span className="font-semibold text-gray-900">{filtered.length}</span> dari {arsipData.length} dokumen
+            Menampilkan <span className="font-semibold text-gray-900">{filtered.length}</span> dari {archives.length} dokumen
           </p>
           {(searchQuery || activeType !== "Semua" || activeCategory !== "Semua") && (
             <button
@@ -289,15 +307,23 @@ export default function Arsip() {
 
         {/* Archive list */}
         <div className="space-y-4 mb-12">
-          {filtered.map(item => (
-            <ArsipCard key={item.id} item={item} />
-          ))}
-          {filtered.length === 0 && (
-            <div className="text-center py-16 text-gray-400">
-              <Archive className="w-12 h-12 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">Dokumen tidak ditemukan</p>
-              <p className="text-sm mt-1">Coba ubah kata kunci atau filter pencarian.</p>
-            </div>
+          {loading ? (
+            [1, 2, 3].map(n => (
+              <div key={n} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 animate-pulse h-28" />
+            ))
+          ) : (
+            <>
+              {filtered.map(item => (
+                <ArsipCard key={item.id} item={item} />
+              ))}
+              {filtered.length === 0 && (
+                <div className="text-center py-16 text-gray-400">
+                  <Archive className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                  <p className="font-medium">Dokumen tidak ditemukan</p>
+                  <p className="text-sm mt-1">Coba ubah kata kunci atau filter pencarian.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 

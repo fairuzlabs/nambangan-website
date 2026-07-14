@@ -17,7 +17,7 @@ export default function AdminLogin() {
     setError("");
     setLoading(true);
     await new Promise(r => setTimeout(r, 600));
-    const ok = adminLogin(form.username, form.password);
+    const ok = await adminLogin(form.username, form.password);
     setLoading(false);
     if (ok) router.push("/admin/dashboard");
     else setError("Username atau password salah.");

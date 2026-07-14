@@ -1,11 +1,20 @@
 import Link from "next/link";
 import { Calendar, User, ArrowLeft, Tag } from "lucide-react";
-import { newsData } from "@/data/mockData";
+import { api, type NewsItem } from "@/lib/api";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 export default async function NewsDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const news = newsData.find((n) => n.id === id);
+  let news: NewsItem | null = null;
+  let relatedNews: NewsItem[] = [];
+
+  try {
+    news = await api.getNewsDetail(id);
+    const { data } = await api.getNews({ category: news?.category, limit: 10 });
+    relatedNews = data.filter((n: any) => n.slug !== news?.slug).slice(0, 3);
+  } catch (error) {
+    console.error("Gagal memuat berita:", error);
+  }
 
   if (!news) {
     return (
@@ -19,10 +28,6 @@ export default async function NewsDetail({ params }: { params: Promise<{ id: str
       </div>
     );
   }
-
-  const relatedNews = newsData
-    .filter((n) => n.id !== news.id && n.category === news.category)
-    .slice(0, 3);
 
   return (
     <div className="bg-gray-50 min-h-screen py-8">
@@ -91,7 +96,7 @@ export default async function NewsDetail({ params }: { params: Promise<{ id: str
               {relatedNews.map((relatedItem) => (
                 <Link
                   key={relatedItem.id}
-                  href={`/news/${relatedItem.id}`}
+                  href={`/news/${relatedItem.slug}`}
                   className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="aspect-video relative overflow-hidden">

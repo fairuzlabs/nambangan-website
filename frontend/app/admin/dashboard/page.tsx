@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { Newspaper, Archive, Headphones, Map, TrendingUp, Eye, Users, ArrowUpRight, Clock, Leaf } from "lucide-react";
-import { newsData, arsipData, podcastData, proklimData, umkmData, kesenianData } from "@/data/mockData";
+import { api } from "@/lib/api";
+import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const visitData = [
@@ -15,15 +16,6 @@ const visitData = [
   { hari: "Min", kunjungan: 96 },
 ];
 
-const STAT_CARDS = [
-  { label: "Total Berita",  value: newsData.length,   icon: Newspaper, color: "bg-green-100 text-green-700", link: "/admin/berita" },
-  { label: "Arsip Proklim", value: arsipData.length,  icon: Archive,   color: "bg-red-100 text-red-600",    link: "/admin/arsip" },
-  { label: "Episode Podcast",value: podcastData.length,icon: Headphones,color: "bg-amber-100 text-amber-700",link: "/admin/podcast" },
-  { label: "Lokasi di Peta", value: proklimData.length + umkmData.length + kesenianData.length, icon: Map, color: "bg-blue-100 text-blue-700", link: "/admin/peta" },
-];
-
-const recentNews = newsData.slice(0, 4);
-
 const QUICK_ACTIONS = [
   { to: "/admin/berita",    label: "Tulis Berita Baru",   icon: Newspaper, bg: "bg-green-600 hover:bg-green-700" },
   { to: "/admin/arsip",     label: "Tambah Arsip",        icon: Archive,   bg: "bg-red-500 hover:bg-red-600" },
@@ -32,6 +24,48 @@ const QUICK_ACTIONS = [
 ];
 
 export default function AdminDashboard() {
+  const [stats, setStats] = useState({
+    news: 0,
+    arsip: 0,
+    podcast: 0,
+    peta: 0
+  });
+  const [recentNews, setRecentNews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const [newsRes, arsipRes, podcastRes, mapRes] = await Promise.all([
+          api.getNews(),
+          api.getArchives(),
+          api.getPodcasts(),
+          api.getMapPoints()
+        ]);
+        setStats({
+          news: newsRes.data.length,
+          arsip: arsipRes.length,
+          podcast: podcastRes.length,
+          peta: mapRes.length
+        });
+        setRecentNews(newsRes.data.slice(0, 4));
+      } catch (err) {
+        console.error("Gagal memuat statistik dashboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const statCards = [
+    { label: "Total Berita",  value: stats.news,   icon: Newspaper, color: "bg-green-100 text-green-700", link: "/admin/berita" },
+    { label: "Arsip Proklim", value: stats.arsip,  icon: Archive,   color: "bg-red-100 text-red-600",    link: "/admin/arsip" },
+    { label: "Episode Podcast",value: stats.podcast,icon: Headphones,color: "bg-amber-100 text-amber-700",link: "/admin/podcast" },
+    { label: "Lokasi di Peta", value: stats.peta, icon: Map, color: "bg-blue-100 text-blue-700", link: "/admin/peta" },
+  ];
+
   return (
     <div className="p-6 sm:p-8 space-y-8">
 
@@ -53,7 +87,7 @@ export default function AdminDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {STAT_CARDS.map(({ label, value, icon: Icon, color, link }) => (
+        {statCards.map(({ label, value, icon: Icon, color, link }) => (
           <Link
             key={label}
             href={link}
@@ -65,7 +99,9 @@ export default function AdminDashboard() {
               </div>
               <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
             </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1" style={{ fontFamily: "var(--font-serif)" }}>{value}</div>
+            <div className="text-3xl font-bold text-gray-900 mb-1" style={{ fontFamily: "var(--font-serif)" }}>
+              {loading ? "..." : value}
+            </div>
             <div className="text-xs text-gray-500 font-medium">{label}</div>
           </Link>
         ))}

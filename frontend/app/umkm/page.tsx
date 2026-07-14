@@ -2,18 +2,36 @@
 
 import Link from "next/link";
 import { Phone, Tag } from "lucide-react";
-import { umkmData } from "@/data/mockData";
+import { api, type UMKMProduct } from "@/lib/api";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function UMKM() {
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
+  const [products, setProducts] = useState<UMKMProduct[]>([]);
+  const [categories, setCategories] = useState<string[]>(["Semua"]);
+  const [loading, setLoading] = useState(true);
   
-  const categories = ["Semua", ...Array.from(new Set(umkmData.map(u => u.category)))];
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const pts = await api.getMapPoints();
+        const umkmPts = pts.filter((p: any) => p.locType === "umkm") as UMKMProduct[];
+        setProducts(umkmPts);
+        setCategories(["Semua", ...Array.from(new Set(umkmPts.map(u => u.category)))]);
+      } catch (err) {
+        console.error("Gagal memuat produk UMKM:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
   
   const filteredProducts = selectedCategory === "Semua" 
-    ? umkmData 
-    : umkmData.filter(u => u.category === selectedCategory);
+    ? products 
+    : products.filter(u => u.category === selectedCategory);
 
   return (
     <div className="bg-gray-50 min-h-screen py-8">
@@ -64,42 +82,50 @@ export default function UMKM() {
         </div>
 
         {/* Product Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
-            <Link
-              key={product.id}
-              href={`/umkm/${product.id}`}
-              className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="aspect-square relative overflow-hidden">
-                <ImageWithFallback
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-              <div className="p-6">
-                <div className="inline-block px-3 py-1 bg-orange-100 text-orange-700 text-sm rounded-full mb-3">
-                  {product.category}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse border border-gray-100 h-[380px]" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProducts.map((product) => (
+              <Link
+                key={product.id}
+                href={`/umkm/${product.id}`}
+                className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="aspect-square relative overflow-hidden bg-gray-100">
+                  <ImageWithFallback
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  />
                 </div>
-                <h3 className="font-bold text-gray-900 mb-2">{product.name}</h3>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {product.description}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-green-600">
-                    {product.price}
-                  </span>
-                  <div className="text-sm text-gray-500">
-                    {product.seller}
+                <div className="p-6">
+                  <div className="inline-block px-3 py-1 bg-orange-100 text-orange-700 text-sm rounded-full mb-3">
+                    {product.category}
+                  </div>
+                  <h3 className="font-bold text-gray-900 mb-2">{product.name}</h3>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    {product.description}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold text-green-600">
+                      {product.price}
+                    </span>
+                    <div className="text-sm text-gray-500">
+                      {product.seller}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
 
-        {filteredProducts.length === 0 && (
+        {!loading && filteredProducts.length === 0 && (
           <div className="text-center py-12">
             <Tag className="w-12 h-12 text-gray-400 mx-auto mb-3" />
             <p className="text-gray-500">Tidak ada produk untuk kategori ini</p>

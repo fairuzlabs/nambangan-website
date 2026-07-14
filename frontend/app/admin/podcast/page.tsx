@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Pencil, Trash2, X, Headphones, Clock, User } from "lucide-react";
-import { podcastData as initialData, type PodcastEpisode } from "@/data/mockData";
+import { api, type PodcastEpisode } from "@/lib/api";
 import { FaYoutube } from "react-icons/fa";
 
 const CATEGORIES = ["Proklim", "Pengelolaan Sampah", "Pertanian Urban", "Konservasi Air", "Kesehatan & Lingkungan", "Edukasi Iklim"];
@@ -104,16 +104,78 @@ function Modal({ item, onClose, onSave }: {
 }
 
 export default function AdminPodcast() {
-  const [items, setItems] = useState<PodcastEpisode[]>(initialData);
+  const [items, setItems] = useState<PodcastEpisode[]>([]);
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<Partial<PodcastEpisode> | null | undefined>(undefined);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const [eps, cats] = await Promise.all([
+          api.getPodcasts(),
+          api.getPodcastCategories()
+        ]);
+        setItems(eps);
+        setCategoriesList(cats);
+      } catch (err) {
+        console.error("Gagal memuat podcast:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   const filtered = items.filter(i => !search || i.title.toLowerCase().includes(search.toLowerCase()) || i.host.toLowerCase().includes(search.toLowerCase()));
 
-  const handleSave = (item: PodcastEpisode) => {
-    setItems(prev => prev.some(i => i.id === item.id) ? prev.map(i => i.id === item.id ? item : i) : [item, ...prev]);
-    setModal(undefined);
+  const handleSave = async (item: PodcastEpisode) => {
+    try {
+      const slug = item.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      const catObj = categoriesList.find(c => c.name.toLowerCase() === item.category.toLowerCase());
+      
+      const numericMin = parseInt(String(item.duration).replace(/[^0-9]+/g, "")) || 30;
+      const durationSeconds = numericMin * 60;
+
+      const payload = {
+        title: item.title,
+        slug,
+        description: item.description,
+        youtube_url: `https://www.youtube.com/watch?v=${item.embedId}`,
+        youtube_video_id: item.embedId,
+        category_id: catObj?.id,
+        duration_seconds: durationSeconds,
+        published_at: item.date ? new Date(item.date).toISOString() : new Date().toISOString(),
+        is_featured: false
+      };
+
+      const exists = items.some(i => i.id === item.id);
+      if (exists) {
+        const updated = await api.admin.updatePodcast(item.id, payload);
+        setItems(prev => prev.map(i => i.id === item.id ? updated : i));
+      } else {
+        const created = await api.admin.createPodcast(payload);
+        setItems(prev => [created, ...prev]);
+      }
+      setModal(undefined);
+    } catch (err) {
+      console.error("Gagal menyimpan episode:", err);
+      alert("Gagal menyimpan episode.");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.admin.deletePodcast(id);
+      setItems(prev => prev.filter(i => i.id !== id));
+      setDeleteId(null);
+    } catch (err) {
+      console.error("Gagal menghapus episode:", err);
+      alert("Gagal menghapus episode.");
+    }
   };
 
   return (
@@ -137,36 +199,44 @@ export default function AdminPodcast() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="divide-y divide-gray-50">
-          {filtered.map((ep, idx) => (
-            <div key={ep.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors">
-              <div className="w-7 h-7 rounded-lg bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                {idx + 1}
-              </div>
-              <div className="relative w-14 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                <img src={`https://img.youtube.com/vi/${ep.embedId}/default.jpg`} alt="" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                  <FaYoutube className="w-4 h-4 text-white" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{ep.title}</p>
-                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{ep.category}</span>
-                  <span className="text-xs text-gray-400 flex items-center gap-1"><User className="w-3 h-3" />{ep.host.split("(")[0].trim()}</span>
-                  <span className="text-xs text-gray-400 flex items-center gap-1"><Clock className="w-3 h-3" />{ep.duration}</span>
-                  <span className="text-xs text-gray-400">{new Date(ep.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setModal(ep)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"><Pencil className="w-4 h-4" /></button>
-                <button onClick={() => setDeleteId(ep.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && (
+          {loading ? (
             <div className="px-6 py-12 text-center text-gray-400">
-              <Headphones className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm">Tidak ada episode ditemukan.</p>
+              <p className="text-sm animate-pulse">Memuat data podcast...</p>
             </div>
+          ) : (
+            <>
+              {filtered.map((ep, idx) => (
+                <div key={ep.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors">
+                  <div className="w-7 h-7 rounded-lg bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {idx + 1}
+                  </div>
+                  <div className="relative w-14 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <img src={`https://img.youtube.com/vi/${ep.embedId}/default.jpg`} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <FaYoutube className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{ep.title}</p>
+                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{ep.category}</span>
+                      <span className="text-xs text-gray-400 flex items-center gap-1"><User className="w-3 h-3" />{ep.host.split("(")[0].trim()}</span>
+                      <span className="text-xs text-gray-400 flex items-center gap-1"><Clock className="w-3 h-3" />{ep.duration}</span>
+                      <span className="text-xs text-gray-400">{new Date(ep.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setModal(ep)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => setDeleteId(ep.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <div className="px-6 py-12 text-center text-gray-400">
+                  <Headphones className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm">Tidak ada episode ditemukan.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -179,7 +249,7 @@ export default function AdminPodcast() {
             <p className="text-sm text-gray-500 mb-6">Episode akan dihapus permanen.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50">Batal</button>
-              <button onClick={() => { setItems(p => p.filter(i => i.id !== deleteId)); setDeleteId(null); }} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold">Hapus</button>
+              <button onClick={() => handleDelete(deleteId)} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold">Hapus</button>
             </div>
           </div>
         </div>

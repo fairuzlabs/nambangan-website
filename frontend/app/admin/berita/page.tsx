@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Pencil, Trash2, X, Calendar, Tag, User, Eye } from "lucide-react";
-import { newsData as initialData, type NewsItem } from "@/data/mockData";
+import { api, type NewsItem } from "@/lib/api";
 
 const CATEGORIES = ["Kegiatan", "Penghargaan", "UMKM", "Sosialisasi", "Pengumuman", "Kesehatan"];
 
@@ -23,6 +23,7 @@ function Modal({ item, onClose, onSave }: {
     onSave({
       id: form.id ?? String(Date.now()),
       title: form.title!,
+      slug: form.slug || form.title!.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
       excerpt: form.excerpt || form.content!.slice(0, 120) + "…",
       content: form.content!,
       category: form.category!,
@@ -127,11 +128,32 @@ function Modal({ item, onClose, onSave }: {
 }
 
 export default function AdminBerita() {
-  const [items, setItems] = useState<NewsItem[]>(initialData);
+  const [items, setItems] = useState<NewsItem[]>([]);
+  const [newsCategories, setNewsCategories] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("Semua");
   const [modal, setModal] = useState<Partial<NewsItem> | null | undefined>(undefined);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const [newsRes, catsRes] = await Promise.all([
+          api.admin.getNews({ limit: 100 }),
+          api.getNewsCategories()
+        ]);
+        setItems(newsRes.data);
+        setNewsCategories(catsRes);
+      } catch (err) {
+        console.error("Gagal memuat berita:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   const categories = ["Semua", ...Array.from(new Set(items.map(i => i.category)))];
 
@@ -141,17 +163,44 @@ export default function AdminBerita() {
     return matchQ && matchC;
   });
 
-  const handleSave = (item: NewsItem) => {
-    setItems(prev => prev.some(i => i.id === item.id)
-      ? prev.map(i => i.id === item.id ? item : i)
-      : [item, ...prev]
-    );
-    setModal(undefined);
+  const handleSave = async (item: NewsItem) => {
+    try {
+      const slug = item.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      const catObj = newsCategories.find(c => c.name === item.category);
+      const payload = {
+        title: item.title,
+        slug,
+        excerpt: item.excerpt,
+        content: item.content,
+        image_url: item.image,
+        category_id: catObj?.id,
+        status: "published"
+      };
+
+      const exists = items.some(i => i.id === item.id);
+      if (exists) {
+        const updated = await api.admin.updateNews(item.id, payload);
+        setItems(prev => prev.map(i => i.id === item.id ? updated : i));
+      } else {
+        const created = await api.admin.createNews(payload);
+        setItems(prev => [created, ...prev]);
+      }
+      setModal(undefined);
+    } catch (err) {
+      console.error("Gagal menyimpan berita:", err);
+      alert("Gagal menyimpan berita. Silakan coba lagi.");
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setItems(prev => prev.filter(i => i.id !== id));
-    setDeleteId(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await api.admin.deleteNews(id);
+      setItems(prev => prev.filter(i => i.id !== id));
+      setDeleteId(null);
+    } catch (err) {
+      console.error("Gagal menghapus berita:", err);
+      alert("Gagal menghapus berita.");
+    }
   };
 
   return (
@@ -188,9 +237,8 @@ export default function AdminBerita() {
               <button
                 key={c}
                 onClick={() => setFilterCat(c)}
-                className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
-                  filterCat === c ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                className={`px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${filterCat === c ? "bg-green-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
               >
                 {c}
               </button>
@@ -205,62 +253,70 @@ export default function AdminBerita() {
           <span>Judul</span><span>Kategori</span><span>Tanggal</span><span>Penulis</span><span className="text-right">Aksi</span>
         </div>
         <div className="divide-y divide-gray-50">
-          {filtered.map(item => (
-            <div key={item.id} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_140px_80px_100px] gap-3 sm:gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors items-center">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                  <img src={item.image} alt="" className="w-full h-full object-cover" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{item.title}</p>
-                  <p className="text-xs text-gray-400 truncate mt-0.5">{item.excerpt}</p>
-                </div>
-              </div>
-              <div>
-                <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full">
-                  {item.category}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Calendar className="w-3.5 h-3.5 text-gray-300" />
-                {new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <User className="w-3.5 h-3.5 text-gray-300" />
-                <span className="truncate">{item.author.split(" ").slice(-1)[0]}</span>
-              </div>
-              <div className="flex items-center justify-end gap-1">
-                <a
-                  href={`/news/${item.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Lihat"
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                >
-                  <Eye className="w-4 h-4" />
-                </a>
-                <button
-                  onClick={() => setModal(item)}
-                  title="Edit"
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setDeleteId(item.id)}
-                  title="Hapus"
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && (
+          {loading ? (
             <div className="px-6 py-12 text-center text-gray-400">
-              <Tag className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">Tidak ada berita ditemukan.</p>
+              <p className="text-sm animate-pulse">Memuat data berita...</p>
             </div>
+          ) : (
+            <>
+              {filtered.map(item => (
+                <div key={item.id} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_140px_80px_100px] gap-3 sm:gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors items-center">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                      <img src={item.image} alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{item.title}</p>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">{item.excerpt}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full">
+                      {item.category}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <Calendar className="w-3.5 h-3.5 text-gray-300" />
+                    {new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <User className="w-3.5 h-3.5 text-gray-300" />
+                    <span className="truncate">{item.author.split(" ").slice(-1)[0]}</span>
+                  </div>
+                  <div className="flex items-center justify-end gap-1">
+                    <a
+                      href={`/news/${item.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Lihat"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </a>
+                    <button
+                      onClick={() => setModal(item)}
+                      title="Edit"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteId(item.id)}
+                      title="Hapus"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <div className="px-6 py-12 text-center text-gray-400">
+                  <Tag className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">Tidak ada berita ditemukan.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

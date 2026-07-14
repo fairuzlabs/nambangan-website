@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Pencil, Trash2, X, FileText, Image, BookOpen, Download } from "lucide-react";
-import { arsipData as initialData, type ArsipItem } from "@/data/mockData";
+import { api, type ArsipItem } from "@/lib/api";
 
 const TYPE_LABELS: Record<ArsipItem["type"], string> = { foto: "Foto", laporan: "Laporan PDF", catatan: "Catatan" };
 const TYPE_COLORS: Record<ArsipItem["type"], string> = { foto: "bg-green-100 text-green-700", laporan: "bg-red-100 text-red-700", catatan: "bg-gray-100 text-gray-700" };
@@ -99,11 +99,27 @@ function Modal({ item, onClose, onSave }: {
 }
 
 export default function AdminArsip() {
-  const [items, setItems] = useState<ArsipItem[]>(initialData);
+  const [items, setItems] = useState<ArsipItem[]>([]);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"Semua" | ArsipItem["type"]>("Semua");
   const [modal, setModal] = useState<Partial<ArsipItem> | null | undefined>(undefined);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const res = await api.getArchives();
+        setItems(res);
+      } catch (err) {
+        console.error("Gagal memuat arsip:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   const filtered = items.filter(i => {
     const matchQ = !search || i.title.toLowerCase().includes(search.toLowerCase());
@@ -111,9 +127,59 @@ export default function AdminArsip() {
     return matchQ && matchT;
   });
 
-  const handleSave = (item: ArsipItem) => {
-    setItems(prev => prev.some(i => i.id === item.id) ? prev.map(i => i.id === item.id ? item : i) : [item, ...prev]);
-    setModal(undefined);
+  const handleSave = async (item: ArsipItem) => {
+    try {
+      const files: any[] = [];
+      if (item.fileUrl && item.fileUrl !== "#") {
+        files.push({
+          file_url: item.fileUrl,
+          file_name: item.fileName || "Dokumen Arsip",
+          file_type: item.type === "foto" ? "image" : "document"
+        });
+      }
+      if (item.images && item.images.length > 0) {
+        item.images.forEach(img => {
+          files.push({
+            file_url: img,
+            file_name: "Gambar Dokumentasi",
+            file_type: "image"
+          });
+        });
+      }
+
+      const payload = {
+        title: item.title,
+        description: item.description,
+        doc_type: item.type,
+        program_type: item.category,
+        activity_date: item.date ? new Date(item.date).toISOString() : new Date().toISOString(),
+        files
+      };
+
+      const exists = items.some(i => i.id === item.id);
+      if (exists) {
+        const updated = await api.admin.updateArchive(item.id, payload);
+        setItems(prev => prev.map(i => i.id === item.id ? updated : i));
+      } else {
+        const created = await api.admin.createArchive(payload);
+        setItems(prev => [created, ...prev]);
+      }
+      setModal(undefined);
+    } catch (err) {
+      console.error("Gagal menyimpan arsip:", err);
+      alert("Gagal menyimpan arsip.");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.admin.deleteArchive(id);
+      setItems(prev => prev.filter(i => i.id !== id));
+      setDeleteId(null);
+    } catch (err) {
+      console.error("Gagal menghapus arsip:", err);
+      alert("Gagal menghapus arsip.");
+    }
   };
 
   return (
@@ -144,36 +210,44 @@ export default function AdminArsip() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="divide-y divide-gray-50">
-          {filtered.map(item => {
-            const TypeIcon = TYPE_ICONS[item.type];
-            return (
-              <div key={item.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${TYPE_COLORS[item.type]}`}>
-                  <TypeIcon className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{item.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TYPE_COLORS[item.type]}`}>{TYPE_LABELS[item.type]}</span>
-                    <span className="text-xs text-gray-400">{item.kegiatan}</span>
-                    <span className="text-xs text-gray-400">{new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>
-                  </div>
-                </div>
-                {item.fileUrl && (
-                  <a href={item.fileUrl} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Unduh">
-                    <Download className="w-4 h-4" />
-                  </a>
-                )}
-                <button onClick={() => setModal(item)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"><Pencil className="w-4 h-4" /></button>
-                <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
+          {loading ? (
             <div className="px-6 py-12 text-center text-gray-400">
-              <Archive className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">Tidak ada arsip ditemukan.</p>
+              <p className="text-sm animate-pulse">Memuat data arsip...</p>
             </div>
+          ) : (
+            <>
+              {filtered.map(item => {
+                const TypeIcon = TYPE_ICONS[item.type];
+                return (
+                  <div key={item.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${TYPE_COLORS[item.type]}`}>
+                      <TypeIcon className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{item.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TYPE_COLORS[item.type]}`}>{TYPE_LABELS[item.type]}</span>
+                        <span className="text-xs text-gray-400">{item.kegiatan}</span>
+                        <span className="text-xs text-gray-400">{new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>
+                      </div>
+                    </div>
+                    {item.fileUrl && (
+                      <a href={item.fileUrl} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Unduh">
+                        <Download className="w-4 h-4" />
+                      </a>
+                    )}
+                    <button onClick={() => setModal(item)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => setDeleteId(item.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                );
+              })}
+              {filtered.length === 0 && (
+                <div className="px-6 py-12 text-center text-gray-400">
+                  <Archive className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">Tidak ada arsip ditemukan.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -186,7 +260,7 @@ export default function AdminArsip() {
             <p className="text-sm text-gray-500 mb-6">Tindakan ini tidak dapat dibatalkan.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50">Batal</button>
-              <button onClick={() => { setItems(p => p.filter(i => i.id !== deleteId)); setDeleteId(null); }} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold">Hapus</button>
+              <button onClick={() => handleDelete(deleteId)} className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold">Hapus</button>
             </div>
           </div>
         </div>

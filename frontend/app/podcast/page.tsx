@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Headphones, PlayCircle, Clock, User, Calendar, Tag, ChevronDown, ChevronUp } from "lucide-react";
-import { podcastData, type PodcastEpisode } from "@/data/mockData";
+import { api, type PodcastEpisode } from "@/lib/api";
+import { useEffect } from "react";
 
 function YouTubeEmbed({ embedId, title }: { embedId: string; title: string }) {
   const [loaded, setLoaded] = useState(false);
@@ -126,10 +127,31 @@ function EpisodeCard({ episode, featured = false }: { episode: PodcastEpisode; f
 
 export default function Podcast() {
   const [activeCategory, setActiveCategory] = useState("Semua");
+  const [episodes, setEpisodes] = useState<PodcastEpisode[]>([]);
+  const [categories, setCategories] = useState<string[]>(["Semua"]);
+  const [loading, setLoading] = useState(true);
 
-  const categories = ["Semua", ...Array.from(new Set(podcastData.map(e => e.category)))];
-  const featured = podcastData[0];
-  const rest = podcastData.slice(1);
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const [catsRes, epRes] = await Promise.all([
+          api.getPodcastCategories(),
+          api.getPodcasts()
+        ]);
+        setCategories(["Semua", ...catsRes.map((c: any) => c.name)]);
+        setEpisodes(epRes);
+      } catch (err) {
+        console.error("Gagal memuat podcast:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const featured = episodes[0];
+  const rest = episodes.slice(1);
 
   const filtered = activeCategory === "Semua"
     ? rest
@@ -156,8 +178,8 @@ export default function Podcast() {
         {/* Stats bar */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
-            { label: "Total Episode", value: podcastData.length },
-            { label: "Kategori Topik", value: categories.length - 1 },
+            { label: "Total Episode", value: episodes.length },
+            { label: "Kategori Topik", value: Math.max(0, categories.length - 1) },
             { label: "Mitra Narasumber", value: "4+" },
           ].map(stat => (
             <div key={stat.label} className="bg-white rounded-xl p-4 text-center shadow-sm">
@@ -169,7 +191,11 @@ export default function Podcast() {
 
         {/* Featured episode */}
         <div className="mb-10">
-          <EpisodeCard episode={featured} featured />
+          {loading ? (
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 animate-pulse h-60" />
+          ) : featured ? (
+            <EpisodeCard episode={featured} featured />
+          ) : null}
         </div>
 
         {/* Filter */}
@@ -194,14 +220,22 @@ export default function Podcast() {
 
         {/* Episode list */}
         <div className="space-y-4 mb-12">
-          {filtered.map(episode => (
-            <EpisodeCard key={episode.id} episode={episode} />
-          ))}
-          {filtered.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
-              <Headphones className="w-12 h-12 mx-auto mb-3 opacity-40" />
-              <p>Belum ada episode di kategori ini.</p>
-            </div>
+          {loading ? (
+            [1, 2].map(n => (
+              <div key={n} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 animate-pulse h-28" />
+            ))
+          ) : (
+            <>
+              {filtered.map(episode => (
+                <EpisodeCard key={episode.id} episode={episode} />
+              ))}
+              {filtered.length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  <Headphones className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                  <p>Belum ada episode di kategori ini.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 

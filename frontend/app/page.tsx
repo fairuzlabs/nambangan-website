@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Newspaper, MapPin, ArrowRight, Calendar, Users, Sprout, ShoppingBag, Headphones, Archive, ChevronDown } from "lucide-react";
-import { newsData } from "@/data/mockData";
+import { api } from "@/lib/api";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
+
+export const dynamic = "force-dynamic";
 
 const HERO_IMG = "https://images.unsplash.com/photo-1565583673900-1cd9320f6c8b?w=1920&h=1080&fit=crop&auto=format&q=80";
 
@@ -12,9 +14,26 @@ const STATS = [
   { value: "4",    label: "Spot Kesenian",    icon: MapPin, color: "text-green-700" },
 ];
 
-export default function Home() {
-  const [featured, ...rest] = newsData;
-  const sideNews = rest.slice(0, 2);
+export default async function Home() {
+  let fetchedNews: any[] = [];
+  try {
+    const res = await api.getNews({ page: 1, limit: 3 });
+    fetchedNews = res.data;
+  } catch (err) {
+    console.error("Gagal mengambil berita di homepage:", err);
+  }
+
+  const featured = fetchedNews[0] || {
+    id: "",
+    title: "Belum Ada Berita",
+    excerpt: "Silakan isi konten berita melalui panel administrasi.",
+    image: HERO_IMG,
+    date: new Date().toISOString(),
+    category: "Info",
+    author: "Admin"
+  };
+
+  const sideNews = fetchedNews.slice(1, 3);
 
   return (
     <div className="bg-gray-50">
@@ -123,7 +142,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Featured */}
             <Link
-              href={`/news/${featured.id}`}
+              href={`/news/${featured.slug}`}
               className="lg:col-span-3 group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-gray-100"
             >
               <div className="aspect-[16/9] overflow-hidden bg-gray-100">
@@ -153,7 +172,7 @@ export default function Home() {
               {sideNews.map((news) => (
                 <Link
                   key={news.id}
-                  href={`/news/${news.id}`}
+                  href={`/news/${news.slug}`}
                   className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 flex sm:flex-row lg:flex-col"
                 >
                   <div className="w-32 sm:w-40 lg:w-full h-32 sm:h-auto lg:h-40 flex-shrink-0 overflow-hidden bg-gray-100">

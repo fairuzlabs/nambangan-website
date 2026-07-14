@@ -2,21 +2,44 @@
 
 import { useState, useEffect, useRef } from "react";
 import { MapPin, Info } from "lucide-react";
-import { proklimData } from "@/data/mockData";
+import { api, type ProklimLocation } from "@/lib/api";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import "leaflet/dist/leaflet.css";
 
 export default function Proklim() {
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [locations, setLocations] = useState<ProklimLocation[]>([]);
+  const [loading, setLoading] = useState(true);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
 
-  const categories = Array.from(new Set(proklimData.map(p => p.category)));
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const pts = await api.getMapPoints();
+        const filtered = pts.filter((p: any) => p.locType === "proklim") as ProklimLocation[];
+        setLocations(filtered);
+      } catch (err) {
+        console.error("Gagal memuat data proklim:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
+  const categories = Array.from(new Set(locations.map(p => p.category)));
+
+  // Initialize Map Once
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
+    let active = true;
 
     import("leaflet").then((L) => {
+      if (!active) return;
+      if (mapInstanceRef.current || (mapRef.current as any)?._leaflet_id) return;
+
       // Fix default icon
       // @ts-ignore
       delete L.Icon.Default.prototype._getIconUrl;
@@ -32,8 +55,24 @@ export default function Proklim() {
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
+    });
 
-      proklimData.forEach((location) => {
+    return () => {
+      active = false;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Sync markers when locations change
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || locations.length === 0) return;
+
+    import("leaflet").then((L) => {
+      locations.forEach((location) => {
         const marker = L.marker([location.lat, location.lng]).addTo(map);
         marker.bindPopup(`
           <div style="min-width:180px">
@@ -46,14 +85,7 @@ export default function Proklim() {
         });
       });
     });
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, []);
+  }, [locations]);
 
   return (
     <div className="bg-gray-50 min-h-screen py-8">
@@ -97,7 +129,7 @@ export default function Proklim() {
               <h3 className="font-bold text-gray-900 mb-4">Kategori Lokasi</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {categories.map((category) => {
-                  const count = proklimData.filter(p => p.category === category).length;
+                  const count = locations.filter(p => p.category === category).length;
                   return (
                     <div key={category} className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-blue-600 rounded-full" />
@@ -118,7 +150,7 @@ export default function Proklim() {
 
               {selectedLocation ? (
                 (() => {
-                  const location = proklimData.find(p => p.id === selectedLocation);
+                  const location = locations.find(p => p.id === selectedLocation);
                   if (!location) return null;
                   return (
                     <div>
@@ -162,7 +194,7 @@ export default function Proklim() {
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Semua Lokasi Proklim</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {proklimData.map((location) => (
+            {locations.map((location) => (
               <div
                 key={location.id}
                 onClick={() => setSelectedLocation(location.id)}

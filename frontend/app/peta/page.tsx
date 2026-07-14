@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { MapPin, ShoppingBag, Leaf, Music, X, Phone, Clock, Tag, ArrowRight, ChevronDown } from "lucide-react";
-import { proklimData, umkmData, kesenianData } from "@/data/mockData";
-import type { ProklimLocation, UMKMProduct, KesenianLocation } from "@/data/mockData";
+import { api, type ProklimLocation, type UMKMProduct, type KesenianLocation } from "@/lib/api";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import Link from "next/link";
 import "leaflet/dist/leaflet.css";
@@ -177,19 +176,36 @@ export default function Peta() {
   const [filter, setFilter] = useState<FilterType>("semua");
   const [selected, setSelected] = useState<SelectedPoint | null>(null);
   const [mobileListOpen, setMobileListOpen] = useState(false);
+  const [points, setPoints] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
 
-  const allPoints: SelectedPoint[] = [
-    ...proklimData.map(d => ({ type: "proklim" as const, data: d })),
-    ...umkmData.map(d => ({ type: "umkm" as const, data: d })),
-    ...kesenianData.map(d => ({ type: "kesenian" as const, data: d })),
-  ];
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const pts = await api.getMapPoints();
+        setPoints(pts);
+      } catch (err) {
+        console.error("Gagal memuat data titik peta:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const allPoints: SelectedPoint[] = points.map(p => ({
+    type: p.locType,
+    data: p,
+  }));
 
   const filtered = filter === "semua" ? allPoints : allPoints.filter(p => p.type === filter);
 
+  // Initialize Map Once
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
     let active = true;
@@ -207,24 +223,6 @@ export default function Peta() {
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(map);
-
-      const addMarkers = () => {
-        markersRef.current.forEach(m => m.remove());
-        markersRef.current = [];
-
-        allPoints.forEach((point) => {
-          const lat = (point.data as any).lat;
-          const lng = (point.data as any).lng;
-          if (!lat || !lng) return;
-
-          const iconOpts = createDivIcon(point.type);
-          const marker = L.marker([lat, lng], { icon: L.divIcon(iconOpts) }).addTo(map);
-          marker.on("click", () => setSelected(point));
-          markersRef.current.push(marker);
-        });
-      };
-
-      addMarkers();
     });
 
     return () => {
@@ -236,11 +234,34 @@ export default function Peta() {
     };
   }, []);
 
+  // Synchronize Markers
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || points.length === 0) return;
+
+    import("leaflet").then((L) => {
+      // Clear existing markers
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
+
+      filtered.forEach((point) => {
+        const lat = (point.data as any).lat;
+        const lng = (point.data as any).lng;
+        if (!lat || !lng) return;
+
+        const iconOpts = createDivIcon(point.type);
+        const marker = L.marker([lat, lng], { icon: L.divIcon(iconOpts) }).addTo(map);
+        marker.on("click", () => setSelected(point));
+        markersRef.current.push(marker);
+      });
+    });
+  }, [points, filter]);
+
   const counts = {
     semua: allPoints.length,
-    proklim: proklimData.length,
-    umkm: umkmData.length,
-    kesenian: kesenianData.length,
+    proklim: allPoints.filter(p => p.type === "proklim").length,
+    umkm: allPoints.filter(p => p.type === "umkm").length,
+    kesenian: allPoints.filter(p => p.type === "kesenian").length,
   };
 
   const filterButtons: { key: FilterType; icon: typeof Leaf }[] = [

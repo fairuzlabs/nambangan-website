@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Pencil, Trash2, X, Leaf, ShoppingBag, Music, MapPin, Phone } from "lucide-react";
-import { proklimData as initProklim, umkmData as initUmkm, kesenianData as initKesenian } from "@/data/mockData";
-import type { ProklimLocation, UMKMProduct, KesenianLocation } from "@/data/mockData";
+import { api, type ProklimLocation, type UMKMProduct, type KesenianLocation } from "@/lib/api";
 
 type LocType = "proklim" | "umkm" | "kesenian";
 
@@ -78,19 +77,38 @@ function EditModal({ item, onClose, onSave }: { item: AnyLoc; onClose: () => voi
 }
 
 export default function AdminPeta() {
-  const [proklim, setProklim] = useState(initProklim);
-  const [umkm, setUmkm] = useState(initUmkm);
-  const [kesenian, setKesenian] = useState(initKesenian);
+  const [items, setItems] = useState<AnyLoc[]>([]);
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<LocType | "semua">("semua");
   const [editing, setEditing] = useState<AnyLoc | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; type: LocType } | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const allItems: AnyLoc[] = [
-    ...proklim.map(d => ({ ...d, locType: "proklim" as const })),
-    ...umkm.map(d => ({ ...d, locType: "umkm" as const })),
-    ...kesenian.map(d => ({ ...d, locType: "kesenian" as const })),
-  ];
+  useEffect(() => {
+    async function load() {
+      try {
+        setLoading(true);
+        const [pts, cats] = await Promise.all([
+          api.admin.getMapPoints(),
+          api.getMapCategories()
+        ]);
+        setItems(pts);
+        setCategoriesList(cats);
+      } catch (err) {
+        console.error("Gagal memuat peta:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const countProklim = items.filter(i => i.locType === "proklim").length;
+  const countUmkm = items.filter(i => i.locType === "umkm").length;
+  const countKesenian = items.filter(i => i.locType === "kesenian").length;
+
+  const allItems = items;
 
   const filtered = allItems.filter(item => {
     const matchQ = !search || (item as any).name.toLowerCase().includes(search.toLowerCase());
@@ -98,19 +116,51 @@ export default function AdminPeta() {
     return matchQ && matchT;
   });
 
-  const handleSave = (updated: AnyLoc) => {
-    if (updated.locType === "proklim") setProklim(p => p.map(i => i.id === updated.id ? (updated as ProklimLocation) : i));
-    if (updated.locType === "umkm")    setUmkm(p => p.map(i => i.id === updated.id ? (updated as UMKMProduct) : i));
-    if (updated.locType === "kesenian") setKesenian(p => p.map(i => i.id === updated.id ? (updated as KesenianLocation) : i));
-    setEditing(null);
+  const handleSave = async (updated: AnyLoc) => {
+    try {
+      const catObj = categoriesList.find(c => c.name.toLowerCase() === updated.category.toLowerCase() || c.slug === updated.locType);
+      
+      const payload: any = {
+        name: updated.name,
+        category_id: catObj?.id || updated.category,
+        description: updated.description,
+        latitude: updated.lat,
+        longitude: updated.lng,
+        address: "RW 18 Nambangan",
+        image_url: updated.image || "",
+        is_active: true
+      };
+
+      if (updated.locType === "umkm") {
+        payload.price = parseFloat(String((updated as any).price).replace(/[^0-9.-]+/g, "")) || 0;
+        payload.contact_phone = (updated as any).contact || "";
+        payload.owner_name = (updated as any).seller || "";
+      } else if (updated.locType === "kesenian") {
+        payload.subtitle = (updated as any).schedule || "";
+        payload.contact_phone = (updated as any).contact || "";
+      } else if (updated.locType === "proklim") {
+        payload.subtitle = (updated as any).activities ? (updated as any).activities.join(", ") : "";
+      }
+
+      const saved = await api.admin.updateMapPoint(updated.id, payload);
+      setItems(prev => prev.map(i => i.id === updated.id ? saved : i));
+      setEditing(null);
+    } catch (err) {
+      console.error("Gagal menyimpan lokasi:", err);
+      alert("Gagal menyimpan lokasi.");
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    if (deleteTarget.type === "proklim") setProklim(p => p.filter(i => i.id !== deleteTarget.id));
-    if (deleteTarget.type === "umkm")    setUmkm(p => p.filter(i => i.id !== deleteTarget.id));
-    if (deleteTarget.type === "kesenian") setKesenian(p => p.filter(i => i.id !== deleteTarget.id));
-    setDeleteTarget(null);
+    try {
+      await api.admin.deleteMapPoint(deleteTarget.id);
+      setItems(prev => prev.filter(i => i.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error("Gagal menghapus lokasi:", err);
+      alert("Gagal menghapus lokasi.");
+    }
   };
 
   return (
@@ -130,12 +180,12 @@ export default function AdminPeta() {
         {(["proklim","umkm","kesenian"] as LocType[]).map(t => {
           const meta = TYPE_META[t];
           const Icon = meta.icon;
-          const count = t === "proklim" ? proklim.length : t === "umkm" ? umkm.length : kesenian.length;
+          const count = t === "proklim" ? countProklim : t === "umkm" ? countUmkm : countKesenian;
           return (
             <button key={t} onClick={() => setFilterType(filterType === t ? "semua" : t)} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${filterType === t ? "border-gray-900 bg-white shadow-md" : "border-gray-100 bg-white hover:border-gray-200"}`}>
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${meta.bg}`}><Icon className="w-4.5 h-4.5 text-white" /></div>
               <div className="text-left">
-                <div className="font-bold text-gray-900 text-xl">{count}</div>
+                <div className="font-bold text-gray-900 text-xl">{loading ? "..." : count}</div>
                 <div className="text-xs text-gray-500">{meta.label}</div>
               </div>
             </button>
@@ -152,39 +202,47 @@ export default function AdminPeta() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="divide-y divide-gray-50">
-          {filtered.map(item => {
-            const meta = TYPE_META[item.locType];
-            const Icon = meta.icon;
-            return (
-              <div key={`${item.locType}-${item.id}`} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.bg}`}>
-                  <Icon className="w-4 h-4 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{(item as any).name}</p>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${meta.color}`}>{meta.label}</span>
-                    <span className="text-xs text-gray-400">{(item as any).category}</span>
-                    {item.locType === "umkm" && (
-                      <span className="text-xs text-green-700 font-medium">{(item as any).price}</span>
-                    )}
-                    {item.locType === "kesenian" && (item as any).contact && (
-                      <span className="text-xs text-gray-400 flex items-center gap-1"><Phone className="w-3 h-3" />{(item as any).contact}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="text-xs text-gray-400 hidden sm:block tabular-nums">
-                  {((item as any).lat as number)?.toFixed(4)}, {((item as any).lng as number)?.toFixed(4)}
-                </div>
-                <button onClick={() => setEditing(item)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"><Pencil className="w-4 h-4" /></button>
-                <button onClick={() => setDeleteTarget({ id: item.id, type: item.locType })} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
+          {loading ? (
             <div className="px-6 py-12 text-center text-gray-400">
-              <MapPin className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm">Tidak ada lokasi ditemukan.</p>
+              <p className="text-sm animate-pulse">Memuat data lokasi...</p>
             </div>
+          ) : (
+            <>
+              {filtered.map(item => {
+                const meta = TYPE_META[item.locType];
+                const Icon = meta.icon;
+                return (
+                  <div key={`${item.locType}-${item.id}`} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.bg}`}>
+                      <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{(item as any).name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${meta.color}`}>{meta.label}</span>
+                        <span className="text-xs text-gray-400">{(item as any).category}</span>
+                        {item.locType === "umkm" && (
+                          <span className="text-xs text-green-700 font-medium">{(item as any).price}</span>
+                        )}
+                        {item.locType === "kesenian" && (item as any).contact && (
+                          <span className="text-xs text-gray-400 flex items-center gap-1"><Phone className="w-3 h-3" />{(item as any).contact}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-400 hidden sm:block tabular-nums">
+                      {((item as any).lat as number)?.toFixed(4)}, {((item as any).lng as number)?.toFixed(4)}
+                    </div>
+                    <button onClick={() => setEditing(item)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => setDeleteTarget({ id: item.id, type: item.locType })} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                );
+              })}
+              {filtered.length === 0 && (
+                <div className="px-6 py-12 text-center text-gray-400">
+                  <MapPin className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm">Tidak ada lokasi ditemukan.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

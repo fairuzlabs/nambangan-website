@@ -1,18 +1,34 @@
 import Link from "next/link";
 import { ArrowLeft, Phone, MapPin, Tag, ShoppingBag } from "lucide-react";
-import { umkmData } from "@/data/mockData";
+import { api, type UMKMProduct } from "@/lib/api";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 
 export default async function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const product = umkmData.find((p) => p.id === id);
+  
+  let product: UMKMProduct | null = null;
+  let relatedProducts: UMKMProduct[] = [];
+
+  try {
+    const pts = await api.getMapPoints();
+    const umkmPts = pts.filter((p: any) => p.locType === "umkm") as UMKMProduct[];
+    const found = umkmPts.find((p) => p.id === id);
+    if (found) {
+      product = found;
+      relatedProducts = umkmPts
+        .filter((p) => p.id !== product!.id && p.category === product!.category)
+        .slice(0, 3);
+    }
+  } catch (error) {
+    console.error("Gagal memuat produk:", error);
+  }
 
   if (!product) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Produk tidak ditemukan</h2>
-          <Link href="/peta" className="text-orange-600 hover:text-orange-700">
+          <Link href="/umkm" className="text-orange-600 hover:text-orange-700">
             Kembali ke katalog UMKM
           </Link>
         </div>
@@ -20,16 +36,12 @@ export default async function ProductDetail({ params }: { params: Promise<{ id: 
     );
   }
 
-  const relatedProducts = umkmData
-    .filter((p) => p.id !== product.id && p.category === product.category)
-    .slice(0, 3);
-
   return (
     <div className="bg-gray-50 min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button */}
         <Link
-          href="/peta"
+          href="/umkm"
           className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
