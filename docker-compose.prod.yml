@@ -3,6 +3,8 @@ services:
     image: postgres:16
     container_name: rw18_db
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-rw18}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}

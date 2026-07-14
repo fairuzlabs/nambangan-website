@@ -1,0 +1,14 @@
+DELETE FROM archive_document_tags;
+DELETE FROM archive_files;
+DELETE FROM archive_documents;
+DELETE FROM podcast_episode_guests;
+DELETE FROM podcast_guests;
+DELETE FROM podcast_episodes;
+DELETE FROM podcast_categories;
+DELETE FROM map_point_umkm_details;
+DELETE FROM map_points;
+DELETE FROM map_categories;
+DELETE FROM news;
+DELETE FROM news_categories;
+DELETE FROM tags;
+DELETE FROM admins;
