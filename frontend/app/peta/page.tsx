@@ -178,6 +178,7 @@ export default function Peta() {
   const [mobileListOpen, setMobileListOpen] = useState(false);
   const [points, setPoints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mapInstance, setMapInstance] = useState<any>(null);
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -217,8 +218,9 @@ export default function Peta() {
       // @ts-ignore
       delete L.Icon.Default.prototype._getIconUrl;
 
-      const map = L.map(mapRef.current!).setView([-7.479167, 110.217778], 16);
+      const map = L.map(mapRef.current!).setView([-7.4705, 110.21800], 16);
       mapInstanceRef.current = map;
+      setMapInstance(map);
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -231,31 +233,53 @@ export default function Peta() {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
+      setMapInstance(null);
     };
   }, []);
 
   // Synchronize Markers
   useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || points.length === 0) return;
+    if (!mapInstance || points.length === 0) return;
 
     import("leaflet").then((L) => {
       // Clear existing markers
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
 
+      const validCoords: [number, number][] = [];
+
       filtered.forEach((point) => {
         const lat = (point.data as any).lat;
         const lng = (point.data as any).lng;
         if (!lat || !lng) return;
 
+        validCoords.push([lat, lng]);
         const iconOpts = createDivIcon(point.type);
-        const marker = L.marker([lat, lng], { icon: L.divIcon(iconOpts) }).addTo(map);
+        const marker = L.marker([lat, lng], { icon: L.divIcon(iconOpts) }).addTo(mapInstance);
         marker.on("click", () => setSelected(point));
         markersRef.current.push(marker);
       });
+
+      // Auto-fit bounds to show all markers when first loading (no selected point)
+      if (validCoords.length > 0 && !selected) {
+        const bounds = L.latLngBounds(validCoords);
+        mapInstance.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
+      }
     });
-  }, [points, filter]);
+  }, [mapInstance, points, filter]);
+
+  // Fly to selected point
+  useEffect(() => {
+    if (!mapInstance || !selected) return;
+    const lat = (selected.data as any).lat;
+    const lng = (selected.data as any).lng;
+    if (lat && lng) {
+      mapInstance.flyTo([lat, lng], 17, {
+        duration: 1.5,
+        easeLinearity: 0.25
+      });
+    }
+  }, [selected, mapInstance]);
 
   const counts = {
     semua: allPoints.length,

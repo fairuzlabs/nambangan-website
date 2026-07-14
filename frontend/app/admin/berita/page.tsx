@@ -4,15 +4,14 @@ import { useState, useEffect } from "react";
 import { Plus, Search, Pencil, Trash2, X, Calendar, Tag, User, Eye } from "lucide-react";
 import { api, type NewsItem } from "@/lib/api";
 
-const CATEGORIES = ["Kegiatan", "Penghargaan", "UMKM", "Sosialisasi", "Pengumuman", "Kesehatan"];
-
-function Modal({ item, onClose, onSave }: {
+function Modal({ item, onClose, onSave, categories }: {
   item: Partial<NewsItem> | null;
   onClose: () => void;
   onSave: (item: NewsItem) => void;
+  categories: any[];
 }) {
   const [form, setForm] = useState<Partial<NewsItem>>(item ?? {
-    title: "", excerpt: "", content: "", category: "Kegiatan",
+    title: "", excerpt: "", content: "", category: categories[0]?.name || "Kegiatan",
     author: "Admin RW 18", date: new Date().toISOString().split("T")[0], image: ""
   });
 
@@ -26,7 +25,7 @@ function Modal({ item, onClose, onSave }: {
       slug: form.slug || form.title!.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
       excerpt: form.excerpt || form.content!.slice(0, 120) + "…",
       content: form.content!,
-      category: form.category!,
+      category: form.category || categories[0]?.name || "Kegiatan",
       author: form.author!,
       date: form.date!,
       image: form.image || "https://images.unsplash.com/photo-1533734635438-fa92e72a1f0e?w=800&q=80",
@@ -60,11 +59,11 @@ function Modal({ item, onClose, onSave }: {
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5">Kategori</label>
               <select
-                value={form.category || "Kegiatan"}
+                value={form.category || categories[0]?.name || "Kegiatan"}
                 onChange={e => set("category", e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white cursor-pointer"
               >
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div>
@@ -155,7 +154,7 @@ export default function AdminBerita() {
     load();
   }, []);
 
-  const categories = ["Semua", ...Array.from(new Set(items.map(i => i.category)))];
+  const categories = ["Semua", ...newsCategories.map(c => c.name)];
 
   const filtered = items.filter(i => {
     const matchQ = !search || i.title.toLowerCase().includes(search.toLowerCase());
@@ -323,7 +322,7 @@ export default function AdminBerita() {
 
       {/* Add/Edit modal */}
       {modal !== undefined && (
-        <Modal item={modal} onClose={() => setModal(undefined)} onSave={handleSave} />
+        <Modal item={modal} onClose={() => setModal(undefined)} onSave={handleSave} categories={newsCategories} />
       )}
 
       {/* Delete confirm */}
