@@ -63,6 +63,24 @@ services:
     networks:
       - internal
 
+  # ========================================================
+  # SERVICE PGADMIN (TAMBAHAN BARU)
+  # ========================================================
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: rw18_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@email.com      # Ganti sesuai email keinginan Anda
+      PGADMIN_DEFAULT_PASSWORD: adminpassword      # Ganti sesuai password keinginan Anda
+    ports:
+      - "5050:80"                                 # Akses UI lewat http://localhost:5050
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+
 networks:
   internal:
 
