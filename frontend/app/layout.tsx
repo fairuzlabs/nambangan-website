@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import LayoutWrapper from "./LayoutWrapper";
 import "./globals.css";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "RW 18 Nambangan",
@@ -13,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id">
+    <html lang="id" className={cn("font-sans", geist.variable)}>
       <body className="min-h-screen flex flex-col">
         <LayoutWrapper>{children}</LayoutWrapper>
       </body>

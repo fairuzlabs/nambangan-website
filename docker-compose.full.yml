@@ -1,0 +1,63 @@
+# Opsional: dipakai kalau kamu mau nge-serve frontend+backend+db LANGSUNG lewat
+# docker compose (tanpa nginx, tanpa native `go run` / `npm run dev`).
+#
+# Jalankan dengan:
+#   docker compose -f docker-compose.full.yml --env-file .env up --build
+#
+# Frontend -> http://localhost:3000
+# Backend  -> http://localhost:8080
+#
+# Untuk deployment production sebenarnya, tetap pakai docker-compose.prod.yml
+# (sudah include nginx sebagai reverse proxy + network internal yang lebih aman).
+
+services:
+  db:
+    image: postgres:16
+    container_name: rw18_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rw18}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: rw18_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-rw18}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY:-}
+      R2_SECRET_KEY: ${R2_SECRET_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-rw18-nambangan}
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080/api/v1}
+    container_name: rw18_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
