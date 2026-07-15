@@ -1,6 +1,6 @@
 -- ========== ADMIN ==========
 INSERT INTO admins (id, username, password_hash, display_name) VALUES
-('11111111-1111-1111-1111-111111111111', 'admin', '$2a$10$dummyhashforseedonlyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'Admin RW 18');
+('11111111-1111-1111-1111-111111111111', 'admin', '$2a$10$JJ7rCB4wCyjpmOTU8S1fEO3XPzuJwnznGHVcYd9JkqGWzmmLZyQUa', 'Admin RW 18');
 
 -- ========== TAGS ==========
 INSERT INTO tags (id, name, slug) VALUES

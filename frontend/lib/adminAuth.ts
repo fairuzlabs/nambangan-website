@@ -31,7 +31,8 @@ export const adminLogin = async (username: string, password: string): Promise<bo
       return false;
     }
 
-    const data = await response.json();
+    const res = await response.json();
+    const data = res.data || res;
     if (data.token) {
       localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(EXPIRES_KEY, data.expires_at.toString());
