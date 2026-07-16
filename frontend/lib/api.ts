@@ -136,7 +136,7 @@ function mapNews(item: any): NewsItem {
     title: item.title,
     excerpt: item.excerpt || "",
     content: item.content || "",
-    image: item.image_url || "https://images.unsplash.com/photo-1565583673900-1cd9320f6c8b",
+    image: item.image_url || "",
     date: item.published_at ? item.published_at.split("T")[0] : item.created_at.split("T")[0],
     category: item.category_name || "Kegiatan",
     author: item.author_name || "Admin RW 18",
@@ -311,21 +311,23 @@ export const api = {
       };
     },
 
-    async createNews(data: { title: string; slug: string; excerpt: string; content: string; image_url?: string; category_id?: string; status: string }) {
+    async createNews(data: { title: string; slug: string; excerpt: string; content: string; image_url?: string; category_id?: string; status: string; published_at?: string }) {
       const res = await apiFetch<any>("/admin/news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          published_at: data.status === "published" ? new Date().toISOString() : null,
+          // Use provided published_at, or default to now for published articles
+          published_at: data.published_at ?? (data.status === "published" ? new Date().toISOString() : null),
         }),
       });
       return mapNews(res.data || res);
     },
 
-    async updateNews(id: string, data: Partial<{ title: string; slug: string; excerpt: string; content: string; image_url?: string; category_id?: string; status: string }>) {
+    async updateNews(id: string, data: Partial<{ title: string; slug: string; excerpt: string; content: string; image_url?: string; category_id?: string; status: string; published_at?: string }>) {
       const payload: any = { ...data };
-      if (data.status === "published") {
+      // Only set published_at to now if not already provided by the caller
+      if (data.status === "published" && !data.published_at) {
         payload.published_at = new Date().toISOString();
       }
       const res = await apiFetch<any>(`/admin/news/${id}`, {
@@ -339,6 +341,34 @@ export const api = {
     async deleteNews(id: string) {
       await apiFetch<any>(`/admin/news/${id}`, { method: "DELETE" });
       return true;
+    },
+
+    /**
+     * Uploads an image blob to the backend and returns the public URL.
+     * Accepts JPEG, PNG, WEBP. Max 5 MB.
+     */
+    async uploadImage(blob: Blob, filename: string): Promise<string> {
+      // Always use relative path so nginx proxies correctly to the backend
+      const url = `/api/v1/admin/upload`;
+      const formData = new FormData();
+      formData.append("file", blob, filename);
+
+      const headers = new Headers();
+      const token = typeof window !== "undefined" ? localStorage.getItem("rw18_admin_token") : null;
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+      // Do NOT set Content-Type for FormData; browser sets it with the boundary
+
+      const res = await fetch(url, { method: "POST", headers, body: formData });
+      if (!res.ok) {
+        let errText = "";
+        try { errText = await res.text(); } catch (_) {}
+        throw new Error(`Upload gagal (${res.status}): ${errText || res.statusText}`);
+      }
+      const json = await res.json();
+      // Backend returns { url: "..." } (from httpx.JSON)
+      const imageUrl: string = json.data?.url ?? json.url ?? "";
+      if (!imageUrl) throw new Error("Upload berhasil tapi URL gambar kosong dari server.");
+      return imageUrl;
     },
 
     // Map Points

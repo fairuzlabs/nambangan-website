@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Newspaper, Archive, Map, Headphones, Info,
   LogOut, ExternalLink, Menu, X, Leaf, ChevronRight, Settings,
 } from "lucide-react";
-import { isAuthenticated, adminLogout } from "@/lib/adminAuth";
+import { isAuthenticated, adminLogout, getAdminUser } from "@/lib/adminAuth";
 
 const NAV_GROUPS = [
   {
@@ -40,9 +40,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [adminName, setAdminName] = useState("Admin RW 18");
 
   useEffect(() => {
     if (!isAuthenticated() && pathname !== "/admin/login") router.push("/admin/login");
+  }, [pathname]);
+
+  useEffect(() => {
+    const admin = getAdminUser();
+    if (admin?.display_name) {
+      setAdminName(admin.display_name);
+    }
   }, [pathname]);
 
   useEffect(() => setSidebarOpen(false), [pathname]);
@@ -181,7 +189,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="w-7 h-7 bg-green-700 rounded-full flex items-center justify-center">
               <span className="text-white text-xs font-bold">A</span>
             </div>
-            <span className="hidden sm:block text-xs font-medium text-gray-700">Admin RW 18</span>
+            <span className="hidden sm:block text-xs font-medium text-gray-700">{adminName}</span>
           </div>
         </header>
 
