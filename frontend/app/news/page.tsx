@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, User, Tag, Search, X } from "lucide-react";
+import { Calendar, User, Tag, Search, X, ArrowUpDown } from "lucide-react";
 import { api, type NewsItem } from "@/lib/api";
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { useState, useEffect } from "react";
@@ -12,6 +12,7 @@ export default function News() {
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<"created" | "date">("created");
 
   useEffect(() => {
     async function load() {
@@ -36,14 +37,23 @@ export default function News() {
     load();
   }, []);
 
-  const filteredNews = news.filter(item => {
-    const matchCategory = selectedCategory === "Semua" || item.category === selectedCategory;
-    const matchSearch = !searchQuery || 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.content.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchCategory && matchSearch;
-  });
+  const filteredNews = news
+    .filter(item => {
+      const matchCategory = selectedCategory === "Semua" || item.category === selectedCategory;
+      const matchSearch = !searchQuery ||
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.content.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCategory && matchSearch;
+    })
+    .sort((a, b) => {
+      if (sortBy === "date") {
+        const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (dateDiff !== 0) return dateDiff;
+      }
+      // Default (and tiebreaker for date mode): newest created first
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   return (
     <div className="bg-gray-50 min-h-screen py-8">
@@ -51,36 +61,52 @@ export default function News() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-            Berita & Informasi
+            Berita &amp; Informasi
           </h1>
           <p className="text-gray-600">
             Informasi terkini seputar kegiatan dan perkembangan RW 18 Nambangan
           </p>
         </div>
 
-        {/* Search & Category Filter */}
+        {/* Search, Sort & Category Filter */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-8 space-y-4">
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Cari berita berdasarkan judul atau konten..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent transition-all placeholder:text-gray-400 text-gray-900"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+          {/* Top row: search + sort toggle */}
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Cari berita berdasarkan judul atau konten..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent transition-all placeholder:text-gray-400 text-gray-900"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Sort toggle */}
+            <button
+              onClick={() => setSortBy(s => s === "created" ? "date" : "created")}
+              title={sortBy === "created" ? "Urutkan berdasarkan tanggal terbit" : "Urutkan berdasarkan terbaru ditambahkan"}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all whitespace-nowrap ${
+                sortBy === "date"
+                  ? "bg-green-700 text-white border-green-700 shadow-sm"
+                  : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+              }`}
+            >
+              <ArrowUpDown className="w-4 h-4 flex-shrink-0" />
+              {sortBy === "date" ? "Tanggal Terbit" : "Terbaru"}
+            </button>
           </div>
 
-          {/* Categories Selector */}
+          {/* Categories */}
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
               <button
@@ -162,7 +188,7 @@ export default function News() {
                 }}
                 className="mt-4 inline-flex items-center gap-2 text-sm text-green-700 hover:text-green-600 font-semibold transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" /> Reset filter & pencarian
+                <X className="w-4 h-4" /> Reset filter &amp; pencarian
               </button>
             )}
           </div>

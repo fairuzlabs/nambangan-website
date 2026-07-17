@@ -69,7 +69,7 @@ func (r *NewsRepository) List(ctx context.Context, categorySlug, status, search 
 		return nil, 0, err
 	}
 
-	query := `SELECT ` + newsSelectCols + baseQuery + ` ORDER BY n.published_at DESC NULLS LAST, n.created_at DESC LIMIT $` + itoa(argPos) + ` OFFSET $` + itoa(argPos+1)
+	query := `SELECT ` + newsSelectCols + baseQuery + ` ORDER BY n.created_at DESC LIMIT $` + itoa(argPos) + ` OFFSET $` + itoa(argPos+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.pool.Query(ctx, query, args...)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Search, Pencil, Trash2, X, Calendar, Tag, User, Eye, Upload, ImageIcon, RotateCcw } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Calendar, Tag, User, Eye, Upload, ImageIcon, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { api, type NewsItem } from "@/lib/api";
 import { getAdminUser } from "@/lib/adminAuth";
 
@@ -242,6 +242,8 @@ function Modal({ item, onClose, onSave, categories }: {
         author: form.author!,
         date: form.date!,
         image: finalImage,
+        createdAt: form.createdAt || new Date().toISOString(),
+        updatedAt: form.updatedAt || new Date().toISOString(),
       });
     } finally {
       setSaving(false);
@@ -336,6 +338,17 @@ export default function AdminBerita() {
   const [modal, setModal] = useState<Partial<NewsItem> | null | undefined>(undefined);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<"date" | "author" | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const handleSort = (col: "date" | "author") => {
+    if (sortBy === col) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(col);
+      setSortDir(col === "date" ? "desc" : "asc");
+    }
+  };
 
   useEffect(() => {
     async function load() {
@@ -354,11 +367,33 @@ export default function AdminBerita() {
   }, []);
 
   const categories = ["Semua", ...newsCategories.map(c => c.name)];
-  const filtered = items.filter(i => {
+  const filtered = [...items.filter(i => {
     const matchQ = !search || i.title.toLowerCase().includes(search.toLowerCase());
     const matchC = filterCat === "Semua" || i.category === filterCat;
     return matchQ && matchC;
+  })].sort((a, b) => {
+    if (!sortBy) return 0; // preserve backend order (newest created first)
+    if (sortBy === "date") {
+      const da = new Date(a.date).getTime();
+      const db = new Date(b.date).getTime();
+      const diff = sortDir === "asc" ? da - db : db - da;
+      if (diff !== 0) return diff;
+      // Tiebreaker: most recently modified, then created
+      const udiff = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      if (udiff !== 0) return udiff;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    if (sortBy === "author") {
+      const cmp = a.author.localeCompare(b.author, "id");
+      return sortDir === "asc" ? cmp : -cmp;
+    }
+    return 0;
   });
+
+  const SortIcon = ({ col }: { col: "date" | "author" }) => {
+    if (sortBy !== col) return <ArrowUpDown className="w-3 h-3 opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />;
+  };
 
   const handleSave = async (item: NewsItem) => {
     try {
@@ -426,7 +461,15 @@ export default function AdminBerita() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="hidden sm:grid grid-cols-[1fr_120px_140px_120px_100px] gap-4 px-6 py-3 border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-          <span>Judul</span><span>Kategori</span><span>Tanggal</span><span>Penulis</span><span className="text-right">Aksi</span>
+          <span>Judul</span>
+          <span>Kategori</span>
+          <button onClick={() => handleSort("date")} className={`flex items-center gap-1.5 hover:text-gray-700 transition-colors cursor-pointer ${sortBy === "date" ? "text-green-700" : ""}`}>
+            Tanggal <SortIcon col="date" />
+          </button>
+          <button onClick={() => handleSort("author")} className={`flex items-center gap-1.5 hover:text-gray-700 transition-colors cursor-pointer ${sortBy === "author" ? "text-green-700" : ""}`}>
+            Penulis <SortIcon col="author" />
+          </button>
+          <span className="text-right">Aksi</span>
         </div>
         <div className="divide-y divide-gray-50">
           {loading ? (

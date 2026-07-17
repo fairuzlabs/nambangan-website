@@ -17,7 +17,9 @@ export interface NewsItem {
   excerpt: string;
   content: string;
   image: string;
-  date: string;
+  date: string;       // published_at truncated to YYYY-MM-DD for display
+  createdAt: string;  // full ISO timestamp for tiebreaker sorting
+  updatedAt: string;  // full ISO timestamp for tiebreaker sorting
   category: string;
   author: string;
 }
@@ -138,6 +140,8 @@ function mapNews(item: any): NewsItem {
     content: item.content || "",
     image: item.image_url || "",
     date: item.published_at ? item.published_at.split("T")[0] : item.created_at.split("T")[0],
+    createdAt: item.created_at || "",
+    updatedAt: item.updated_at || item.created_at || "",
     category: item.category_name || "Kegiatan",
     author: item.author_name || "Admin RW 18",
   };
