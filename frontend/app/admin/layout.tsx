@@ -8,6 +8,7 @@ import {
   LogOut, ExternalLink, Menu, X, Leaf, ChevronRight, Settings,
 } from "lucide-react";
 import { isAuthenticated, adminLogout, getAdminUser } from "@/lib/adminAuth";
+import { Toaster } from "sonner";
 
 const NAV_GROUPS = [
   {
@@ -196,6 +197,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           {children}
+          <Toaster richColors position="top-right" />
         </main>
       </div>
     </div>

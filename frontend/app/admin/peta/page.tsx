@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Pencil, Trash2, X, Leaf, ShoppingBag, Music, MapPin, Phone } from "lucide-react";
 import { api, type ProklimLocation, type UMKMProduct, type KesenianLocation } from "@/lib/api";
+import { toast } from "sonner";
 
 type LocType = "proklim" | "umkm" | "kesenian";
 
@@ -145,9 +146,10 @@ export default function AdminPeta() {
       const saved = await api.admin.updateMapPoint(updated.id, payload);
       setItems(prev => prev.map(i => i.id === updated.id ? saved : i));
       setEditing(null);
+      toast.success("Lokasi peta berhasil diperbarui!");
     } catch (err) {
       console.error("Gagal menyimpan lokasi:", err);
-      alert("Gagal menyimpan lokasi.");
+      toast.error("Gagal menyimpan lokasi.");
     }
   };
 
@@ -157,9 +159,10 @@ export default function AdminPeta() {
       await api.admin.deleteMapPoint(deleteTarget.id);
       setItems(prev => prev.filter(i => i.id !== deleteTarget.id));
       setDeleteTarget(null);
+      toast.success("Lokasi peta berhasil dihapus!");
     } catch (err) {
       console.error("Gagal menghapus lokasi:", err);
-      alert("Gagal menghapus lokasi.");
+      toast.error("Gagal menghapus lokasi.");
     }
   };
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Plus, Search, Pencil, Trash2, X, Calendar, Tag, User, Eye, Upload, ImageIcon, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { api, type NewsItem } from "@/lib/api";
 import { getAdminUser } from "@/lib/adminAuth";
+import { toast } from "sonner";
 
 // ─── Image Upload + Crop Component ───────────────────────────────────────────
 
@@ -526,14 +527,16 @@ export default function AdminBerita() {
       if (exists) {
         const updated = await api.admin.updateNews(item.id, payload);
         setItems(prev => prev.map(i => i.id === item.id ? updated : i));
+        toast.success("Berita berhasil diperbarui!");
       } else {
         const created = await api.admin.createNews(payload);
         setItems(prev => [created, ...prev]);
+        toast.success("Berita berhasil dipublikasikan!");
       }
       setModal(undefined);
     } catch (err) {
       console.error("Gagal menyimpan berita:", err);
-      alert("Gagal menyimpan berita. Silakan coba lagi.");
+      toast.error("Gagal menyimpan berita. Silakan coba lagi.");
     }
   };
 
@@ -542,9 +545,10 @@ export default function AdminBerita() {
       await api.admin.deleteNews(id);
       setItems(prev => prev.filter(i => i.id !== id));
       setDeleteId(null);
+      toast.success("Berita berhasil dihapus!");
     } catch (err) {
       console.error("Gagal menghapus berita:", err);
-      alert("Gagal menghapus berita.");
+      toast.error("Gagal menghapus berita.");
     }
   };
 

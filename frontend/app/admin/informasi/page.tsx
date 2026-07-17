@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   Save,
   Leaf,
@@ -59,6 +60,7 @@ export default function AdminInformasi() {
 
   const handleSave = () => {
     setSaved(true);
+    toast.success("Informasi RW berhasil diperbarui!");
     setTimeout(() => setSaved(false), 2500);
   };
 
