@@ -6,7 +6,7 @@ export const getApiBaseUrl = (): string => {
   if (IS_SERVER) {
     return process.env.API_BASE_URL || "http://localhost:8080/api/v1";
   }
-  return "/api/v1";
+  return process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1";
 };
 
 // Interfaces compatible with existing mockData definitions
@@ -352,8 +352,8 @@ export const api = {
      * Accepts JPEG, PNG, WEBP. Max 5 MB.
      */
     async uploadImage(blob: Blob, filename: string): Promise<string> {
-      // Always use relative path so nginx proxies correctly to the backend
-      const url = `/api/v1/admin/upload`;
+      const baseUrl = getApiBaseUrl();
+      const url = `${baseUrl}/admin/upload`;
       const formData = new FormData();
       formData.append("file", blob, filename);
 
