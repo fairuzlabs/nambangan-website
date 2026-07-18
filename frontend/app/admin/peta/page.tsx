@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Search, Pencil, Trash2, X, Leaf, ShoppingBag, Music, MapPin, Phone } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Search, Pencil, Trash2, X, Leaf, ShoppingBag, Music, MapPin, Phone, Upload } from "lucide-react";
 import { api, type ProklimLocation, type UMKMProduct, type KesenianLocation } from "@/lib/api";
 import { toast } from "sonner";
+import ImageUploadCrop from "@/components/admin/ImageUploadCrop";
+import MapPicker from "@/components/admin/MapPicker";
 
 type LocType = "proklim" | "umkm" | "kesenian";
 
@@ -15,62 +17,233 @@ const TYPE_META: Record<LocType, { label: string; color: string; bg: string; ico
 
 type AnyLoc = (ProklimLocation & { locType: "proklim" }) | (UMKMProduct & { locType: "umkm" }) | (KesenianLocation & { locType: "kesenian" });
 
-function EditModal({ item, onClose, onSave }: { item: AnyLoc; onClose: () => void; onSave: (item: AnyLoc) => void }) {
+function EditModal({
+  item,
+  categoriesList,
+  onClose,
+  onSave
+}: {
+  item: AnyLoc;
+  categoriesList: any[];
+  onClose: () => void;
+  onSave: (item: AnyLoc) => void;
+}) {
   const [form, setForm] = useState<AnyLoc>({ ...item });
+  const [pendingImage, setPendingImage] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const uploadTriggerRef = useRef<(() => Promise<string | null>) | null>(null);
+
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.name) {
+      toast.error("Nama lokasi harus diisi.");
+      return;
+    }
+    setSaving(true);
+    try {
+      let finalImage = form.image || "";
+      if (pendingImage && uploadTriggerRef.current) {
+        const uploadedUrl = await uploadTriggerRef.current();
+        if (uploadedUrl) {
+          finalImage = uploadedUrl;
+        }
+      }
+      onSave({
+        ...form,
+        image: finalImage,
+      });
+    } catch (err: any) {
+      console.error("Gagal mengupload gambar:", err);
+      toast.error("Gagal mengunggah gambar. Silakan coba lagi.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="font-bold text-gray-900" style={{ fontFamily: "var(--font-serif)" }}>Edit Lokasi</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X className="w-5 h-5" /></button>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <h2 className="font-bold text-gray-900" style={{ fontFamily: "var(--font-serif)" }}>
+            {item.id ? "Edit Lokasi" : "Tambah Lokasi Baru"}
+          </h2>
+          <button onClick={onClose} disabled={saving} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X className="w-5 h-5" /></button>
         </div>
-        <div className="px-6 py-5 space-y-4">
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nama Lokasi</label>
-            <input value={(form as any).name || ""} onChange={e => set("name", e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input
+              value={form.name || ""}
+              onChange={e => set("name", e.target.value)}
+              placeholder="Masukkan nama lokasi…"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
           </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Kategori Utama</label>
+            <select
+              value={form.locType}
+              onChange={e => {
+                const type = e.target.value as LocType;
+                const matchingCat = categoriesList.find(c => c.slug === type);
+                setForm(f => ({
+                  ...f,
+                  locType: type,
+                  category: matchingCat ? matchingCat.name : type === "proklim" ? "Proklim" : type === "umkm" ? "UMKM" : "Kesenian",
+                } as any));
+              }}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white cursor-pointer"
+            >
+              <option value="umkm">UMKM</option>
+              <option value="proklim">Proklim (Program Kampung Iklim)</option>
+              <option value="kesenian">Kesenian & Budaya</option>
+            </select>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Deskripsi</label>
-            <textarea value={(form as any).description || ""} onChange={e => set("description", e.target.value)} rows={3} className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+            <textarea
+              value={form.description || ""}
+              onChange={e => set("description", e.target.value)}
+              rows={3}
+              placeholder="Deskripsi singkat lokasi..."
+              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+            />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Latitude</label>
-              <input type="number" step="0.0001" value={(form as any).lat || ""} onChange={e => set("lat", parseFloat(e.target.value))} className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Longitude</label>
-              <input type="number" step="0.0001" value={(form as any).lng || ""} onChange={e => set("lng", parseFloat(e.target.value))} className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Kategori</label>
-            <input value={(form as any).category || ""} onChange={e => set("category", e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-          </div>
+
+          {/* Conditional fields based on Category */}
           {form.locType === "umkm" && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Harga</label>
-                <input value={(form as any).price || ""} onChange={e => set("price", e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Range Harga (e.g. Rp 10.000 - Rp 50.000)</label>
+                <input
+                  value={(form as any).price || ""}
+                  onChange={e => set("price", e.target.value)}
+                  placeholder="e.g. Rp 15.000 atau Rp 10.000 - Rp 50.000"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Penjual</label>
-                <input value={(form as any).seller || ""} onChange={e => set("seller", e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nama Penjual</label>
+                  <input
+                    value={(form as any).seller || ""}
+                    onChange={e => set("seller", e.target.value)}
+                    placeholder="Nama pemilik UMKM"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nomor Kontak Penjual</label>
+                  <input
+                    value={(form as any).contact || ""}
+                    onChange={e => set("contact", e.target.value)}
+                    placeholder="e.g. 08123456789"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
               </div>
             </>
           )}
+
           {form.locType === "kesenian" && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Jadwal</label>
-              <input value={(form as any).schedule || ""} onChange={e => set("schedule", e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Jadwal Latihan/Pertunjukan</label>
+                <input
+                  value={(form as any).schedule || ""}
+                  onChange={e => set("schedule", e.target.value)}
+                  placeholder="e.g. Setiap Sabtu 19:00"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nomor Kontak Pengurus</label>
+                <input
+                  value={(form as any).contact || ""}
+                  onChange={e => set("contact", e.target.value)}
+                  placeholder="e.g. 08123456789"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
             </div>
           )}
+
+          {form.locType === "proklim" && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Kegiatan (Pisahkan dengan koma)</label>
+              <input
+                value={(form as any).activities ? (form as any).activities.join(", ") : ""}
+                onChange={e => set("activities", e.target.value.split(",").map((s: string) => s.trim()))}
+                placeholder="e.g. Pengelolaan Sampah, Penghijauan Mandiri"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+          )}
+
+          {/* Image cropper component */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Gambar Lokasi</label>
+            {pendingImage && (
+              <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium">
+                <Upload className="w-3.5 h-3.5 flex-shrink-0" />
+                Gambar belum diunggah. Klik &quot;Potong &amp; Unggah&quot; atau akan otomatis diunggah saat menyimpan.
+              </div>
+            )}
+            <ImageUploadCrop
+              value={form.image || ""}
+              onChange={url => set("image", url)}
+              onPendingChange={setPendingImage}
+              onRegisterUpload={fn => { uploadTriggerRef.current = fn; }}
+            />
+          </div>
+
+          {/* Coordinates inputs */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Latitude</label>
+              <input
+                type="number"
+                step="any"
+                value={form.lat || ""}
+                onChange={e => set("lat", parseFloat(e.target.value) || 0)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Longitude</label>
+              <input
+                type="number"
+                step="any"
+                value={form.lng || ""}
+                onChange={e => set("lng", parseFloat(e.target.value) || 0)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+          </div>
+
+          {/* SSR-safe leaflet coordinates picker */}
+          <MapPicker
+            lat={Number(form.lat) || -7.4705}
+            lng={Number(form.lng) || 110.2180}
+            onChange={(lat, lng) => {
+              set("lat", lat);
+              set("lng", lng);
+            }}
+          />
         </div>
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 rounded-xl hover:bg-gray-100">Batal</button>
-          <button onClick={() => onSave(form)} className="px-5 py-2 text-sm font-semibold bg-green-700 hover:bg-green-600 text-white rounded-xl">Simpan</button>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
+          <button onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium text-gray-600 rounded-xl hover:bg-gray-100 disabled:opacity-50">Batal</button>
+          <button onClick={handleSave} disabled={saving} className="px-5 py-2 text-sm font-semibold bg-green-700 hover:bg-green-600 text-white rounded-xl disabled:opacity-50">
+            {saving ? (pendingImage ? "Mengunggah gambar…" : "Menyimpan…") : (item.id ? "Simpan Perubahan" : "Tambah Lokasi")}
+          </button>
         </div>
       </div>
     </div>
@@ -119,7 +292,7 @@ export default function AdminPeta() {
 
   const handleSave = async (updated: AnyLoc) => {
     try {
-      const catObj = categoriesList.find(c => c.name.toLowerCase() === updated.category.toLowerCase() || c.slug === updated.locType);
+      const catObj = categoriesList.find(c => c.slug === updated.locType);
       
       const payload: any = {
         name: updated.name,
@@ -133,7 +306,13 @@ export default function AdminPeta() {
       };
 
       if (updated.locType === "umkm") {
-        payload.price = parseFloat(String((updated as any).price).replace(/[^0-9.-]+/g, "")) || 0;
+        // Parse minimum price from the range input for the numeric decimal column
+        const priceStr = String((updated as any).price || "");
+        const firstPart = priceStr.split("-")[0].trim();
+        const numericOnly = firstPart.replace(/[^0-9]/g, "");
+        payload.price = parseFloat(numericOnly) || 0;
+
+        payload.subtitle = (updated as any).price || "";
         payload.contact_phone = (updated as any).contact || "";
         payload.owner_name = (updated as any).seller || "";
       } else if (updated.locType === "kesenian") {
@@ -143,10 +322,17 @@ export default function AdminPeta() {
         payload.subtitle = (updated as any).activities ? (updated as any).activities.join(", ") : "";
       }
 
-      const saved = await api.admin.updateMapPoint(updated.id, payload);
-      setItems(prev => prev.map(i => i.id === updated.id ? saved : i));
+      const exists = items.some(i => i.id === updated.id);
+      if (exists) {
+        const saved = await api.admin.updateMapPoint(updated.id, payload);
+        setItems(prev => prev.map(i => i.id === updated.id ? saved : i));
+        toast.success("Lokasi peta berhasil diperbarui!");
+      } else {
+        const saved = await api.admin.createMapPoint(payload);
+        setItems(prev => [saved, ...prev]);
+        toast.success("Lokasi peta baru berhasil ditambahkan!");
+      }
       setEditing(null);
-      toast.success("Lokasi peta berhasil diperbarui!");
     } catch (err) {
       console.error("Gagal menyimpan lokasi:", err);
       toast.error("Gagal menyimpan lokasi.");
@@ -173,9 +359,29 @@ export default function AdminPeta() {
           <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: "var(--font-serif)" }}>Peta & Lokasi</h1>
           <p className="text-sm text-gray-500 mt-0.5">{allItems.length} lokasi terdaftar</p>
         </div>
-        <a href="/peta" target="_blank" className="inline-flex items-center gap-2 border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
-          <MapPin className="w-4 h-4" /> Lihat Peta
-        </a>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setEditing({
+              id: "",
+              name: "",
+              description: "",
+              category: "UMKM",
+              locType: "umkm",
+              lat: -7.48333288952336,
+              lng: 110.23033883249016,
+              image: "",
+              price: "",
+              seller: "",
+              contact: ""
+            } as any)}
+            className="inline-flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> Tambah Lokasi
+          </button>
+          <a href="/peta" target="_blank" className="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
+            <MapPin className="w-4 h-4" /> Lihat Peta
+          </a>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -250,7 +456,7 @@ export default function AdminPeta() {
         </div>
       </div>
 
-      {editing && <EditModal item={editing} onClose={() => setEditing(null)} onSave={handleSave} />}
+      {editing && <EditModal item={editing} categoriesList={categoriesList} onClose={() => setEditing(null)} onSave={handleSave} />}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">

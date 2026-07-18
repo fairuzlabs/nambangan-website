@@ -114,12 +114,6 @@ function DetailPanel({ selected, onClose }: { selected: SelectedPoint; onClose: 
             >
               <Phone className="w-4 h-4" /> Hubungi via WhatsApp
             </a>
-            <Link
-              href={`/umkm/${p.id}`}
-              className="w-full flex items-center justify-center gap-2 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-            >
-              Detail Produk <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
           </div>
         </div>
       </div>
@@ -218,7 +212,7 @@ export default function Peta() {
       // @ts-ignore
       delete L.Icon.Default.prototype._getIconUrl;
 
-      const map = L.map(mapRef.current!).setView([-7.4705, 110.21800], 16);
+      const map = L.map(mapRef.current!).setView([-7.48333288952336, 110.23033883249016], 18);
       mapInstanceRef.current = map;
       setMapInstance(map);
 
@@ -260,10 +254,9 @@ export default function Peta() {
         markersRef.current.push(marker);
       });
 
-      // Auto-fit bounds to show all markers when first loading (no selected point)
+      // We disabled bounds auto-fit on load to keep the map focused on the Balai RW coordinates
       if (validCoords.length > 0 && !selected) {
-        const bounds = L.latLngBounds(validCoords);
-        mapInstance.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
+        // mapInstance.setView([-7.48333288952336, 110.23033883249016], 18);
       }
     });
   }, [mapInstance, points, filter]);

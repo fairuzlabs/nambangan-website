@@ -168,7 +168,7 @@ function mapMapPoint(item: any) {
   } else if (cat === "umkm") {
     const detail = item.umkm_detail || {};
     const rawPrice = detail.price;
-    const formattedPrice = typeof rawPrice === "number" ? `Rp ${rawPrice.toLocaleString("id-ID")}` : "Rp 0";
+    const formattedPrice = item.subtitle || (typeof rawPrice === "number" ? `Rp ${rawPrice.toLocaleString("id-ID")}` : "Rp 0");
     return {
       ...base,
       locType: "umkm" as const,
