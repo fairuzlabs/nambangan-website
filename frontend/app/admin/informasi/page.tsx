@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Save,
   Leaf,
@@ -8,9 +8,12 @@ import {
   Phone,
   Mail,
   Globe,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from "lucide-react";
 import { FaFacebook, FaInstagram, FaYoutube } from "react-icons/fa";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 const INITIAL = {
   namaRW: "RW 18 Nambangan",
@@ -54,15 +57,66 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function AdminInformasi() {
   const [form, setForm] = useState(INITIAL);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [members, setMembers] = useState({
+    ketuaRW: "",
+    ketuaProklim: "",
+    ketuaKarangTaruna: ""
+  });
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const res = await api.getOrganizationMembers();
+        const rw = res.find((m: any) => m.position === "Ketua RW")?.name || "";
+        const proklim = res.find((m: any) => m.position === "Ketua Proklim")?.name || "";
+        const kt = res.find((m: any) => m.position === "Ketua Karang Taruna")?.name || "";
+        setMembers({ ketuaRW: rw, ketuaProklim: proklim, ketuaKarangTaruna: kt });
+      } catch (err) {
+        console.error("Gagal mengambil struktur organisasi:", err);
+        toast.error("Gagal mengambil data struktur organisasi");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const set = (k: keyof typeof INITIAL, v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      await api.admin.updateOrganizationMembers([
+        { position: "Ketua RW", name: members.ketuaRW },
+        { position: "Ketua Proklim", name: members.ketuaProklim },
+        { position: "Ketua Karang Taruna", name: members.ketuaKarangTaruna }
+      ]);
+      setSaved(true);
+      toast.success("Perubahan berhasil disimpan!");
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal menyimpan perubahan");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const inputCls = "w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400 bg-white";
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[50vh]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-green-700 animate-spin" />
+          <p className="text-sm text-gray-500 font-medium">Memuat informasi...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 sm:p-8 space-y-6">
@@ -75,9 +129,10 @@ export default function AdminInformasi() {
         </div>
         <button
           onClick={handleSave}
-          className={`inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm ${saved ? "bg-green-500" : "bg-green-700 hover:bg-green-600"}`}
+          disabled={loading || saving}
+          className={`inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm ${saved ? "bg-green-500" : "bg-green-700 hover:bg-green-600"} disabled:opacity-50`}
         >
-          {saved ? <><CheckCircle className="w-4 h-4" /> Tersimpan!</> : <><Save className="w-4 h-4" /> Simpan Perubahan</>}
+          {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...</> : saved ? <><CheckCircle className="w-4 h-4" /> Tersimpan!</> : <><Save className="w-4 h-4" /> Simpan Perubahan</>}
         </button>
       </div>
 
@@ -106,6 +161,36 @@ export default function AdminInformasi() {
         <Field label="Alamat Lengkap">
           <textarea value={form.alamat} onChange={e => set("alamat", e.target.value)} rows={2} className={`${inputCls} resize-none`} />
         </Field>
+      </Section>
+
+      {/* Struktur Organisasi */}
+      <Section title="Struktur Organisasi">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Field label="Ketua RW">
+            <input
+              value={members.ketuaRW}
+              onChange={e => setMembers(prev => ({ ...prev, ketuaRW: e.target.value }))}
+              className={inputCls}
+              placeholder="Nama Ketua RW"
+            />
+          </Field>
+          <Field label="Ketua Proklim">
+            <input
+              value={members.ketuaProklim}
+              onChange={e => setMembers(prev => ({ ...prev, ketuaProklim: e.target.value }))}
+              className={inputCls}
+              placeholder="Nama Ketua Proklim"
+            />
+          </Field>
+          <Field label="Ketua Karang Taruna">
+            <input
+              value={members.ketuaKarangTaruna}
+              onChange={e => setMembers(prev => ({ ...prev, ketuaKarangTaruna: e.target.value }))}
+              className={inputCls}
+              placeholder="Nama Ketua Karang Taruna"
+            />
+          </Field>
+        </div>
       </Section>
 
       {/* Visi & Misi */}
@@ -186,9 +271,10 @@ export default function AdminInformasi() {
       <div className="flex justify-end">
         <button
           onClick={handleSave}
-          className={`inline-flex items-center gap-2 text-white text-sm font-semibold px-6 py-3 rounded-xl transition-all ${saved ? "bg-green-500" : "bg-green-700 hover:bg-green-600"}`}
+          disabled={loading || saving}
+          className={`inline-flex items-center gap-2 text-white text-sm font-semibold px-6 py-3 rounded-xl transition-all ${saved ? "bg-green-500" : "bg-green-700 hover:bg-green-600"} disabled:opacity-50`}
         >
-          {saved ? <><CheckCircle className="w-4 h-4" /> Tersimpan!</> : <><Save className="w-4 h-4" /> Simpan Semua Perubahan</>}
+          {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...</> : saved ? <><CheckCircle className="w-4 h-4" /> Tersimpan!</> : <><Save className="w-4 h-4" /> Simpan Semua Perubahan</>}
         </button>
       </div>
     </div>

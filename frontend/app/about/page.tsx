@@ -1,27 +1,9 @@
-import { Users, MapPin, Target, Award } from "lucide-react";
+import { Users, MapPin, Target } from "lucide-react";
+import { api } from "@/lib/api";
 
-export default function About() {
-  const achievements = [
-    {
-      icon: Award,
-      title: "Juara 1 Proklim Tingkat Kota",
-      description: "Penghargaan Program Kampung Iklim terbaik di Kota Magelang tahun 2026",
-      year: "2026"
-    },
-    {
-      icon: Users,
-      title: "500+ Kepala Keluarga",
-      description: "Jumlah warga yang aktif berpartisipasi dalam kegiatan RW",
-      year: "2026"
-    },
-    {
-      icon: Target,
-      title: "25+ Pelaku UMKM",
-      description: "UMKM lokal yang terdaftar dan aktif di Pasar UMKM RW 18",
-      year: "2026"
-    }
-  ];
+export const dynamic = "force-dynamic";
 
+export default async function About() {
   const visionMission = {
     vision: "Mewujudkan RW 18 Nambangan sebagai lingkungan yang bersih, sehat, sejahtera, dan peduli terhadap kelestarian lingkungan.",
     missions: [
@@ -33,14 +15,21 @@ export default function About() {
     ]
   };
 
-  const structure = [
-    { position: "Ketua RW 18", name: "Bapak Suryanto" },
-    { position: "Wakil Ketua", name: "Bapak Ahmad Fauzi" },
-    { position: "Sekretaris", name: "Ibu Endang Susilowati" },
-    { position: "Bendahara", name: "Ibu Sri Wahyuni" },
-    { position: "Ketua Tim Proklim", name: "Ibu Siti Nurjanah" },
-    { position: "Koordinator UMKM", name: "Bapak Hadi Purnomo" }
-  ];
+  let members: any[] = [];
+  try {
+    members = await api.getOrganizationMembers();
+  } catch (err) {
+    console.error("Gagal memuat struktur organisasi:", err);
+  }
+
+  const order = ["Ketua RW", "Ketua Proklim", "Ketua Karang Taruna"];
+  const structure = order.map(pos => {
+    const found = members.find(m => m.position === pos);
+    return {
+      position: pos,
+      name: found ? found.name : "-"
+    };
+  });
 
   return (
     <div className="bg-gray-50 min-h-screen py-8">
@@ -117,25 +106,6 @@ export default function About() {
           </div>
         </div>
 
-        {/* Achievements */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Pencapaian</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {achievements.map((achievement, index) => {
-              const Icon = achievement.icon;
-              return (
-                <div key={index} className="bg-white rounded-xl p-6 shadow-sm">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                    <Icon className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div className="text-sm text-green-600 font-medium mb-1">{achievement.year}</div>
-                  <h3 className="font-bold text-gray-900 mb-2">{achievement.title}</h3>
-                  <p className="text-gray-600 text-sm">{achievement.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
         {/* Organization Structure */}
         <div className="bg-white rounded-xl p-8 shadow-sm">

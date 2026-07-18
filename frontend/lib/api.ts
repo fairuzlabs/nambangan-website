@@ -293,8 +293,21 @@ export const api = {
     return raw.map(mapArchive);
   },
 
+  async getOrganizationMembers() {
+    const res = await apiFetch<any>("/organization-members");
+    return res.data || res;
+  },
+
   // ADMIN API (Requires JWT token automatically injected)
   admin: {
+    async updateOrganizationMembers(data: { position: string; name: string }[]) {
+      return apiFetch<any>("/admin/organization-members", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    },
+
     // News
     async getNews(params: { category?: string; status?: string; search?: string; page?: number; limit?: number } = {}) {
       const query = new URLSearchParams();

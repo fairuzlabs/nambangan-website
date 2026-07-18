@@ -8,6 +8,7 @@ import {
   LogOut, ExternalLink, Menu, X, Leaf, ChevronRight, Settings,
 } from "lucide-react";
 import { isAuthenticated, adminLogout } from "@/lib/adminAuth";
+import { Toaster } from "@/components/ui/sonner";
 
 const NAV_GROUPS = [
   {
@@ -190,6 +191,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }
