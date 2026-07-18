@@ -95,7 +95,7 @@ export default function AdminInformasi() {
         { position: "Ketua Karang Taruna", name: members.ketuaKarangTaruna }
       ]);
       setSaved(true);
-      toast.success("Perubahan berhasil disimpan!");
+      toast.success("Informasi RW berhasil diperbarui!");
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       console.error(err);

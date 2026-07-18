@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Pencil, Trash2, X, FileText, Image, BookOpen, Download } from "lucide-react";
 import { api, type ArsipItem } from "@/lib/api";
+import { toast } from "sonner";
 
 const TYPE_LABELS: Record<ArsipItem["type"], string> = { foto: "Foto", laporan: "Laporan PDF", catatan: "Catatan" };
 const TYPE_COLORS: Record<ArsipItem["type"], string> = { foto: "bg-green-100 text-green-700", laporan: "bg-red-100 text-red-700", catatan: "bg-gray-100 text-gray-700" };
@@ -160,14 +161,16 @@ export default function AdminArsip() {
       if (exists) {
         const updated = await api.admin.updateArchive(item.id, payload);
         setItems(prev => prev.map(i => i.id === item.id ? updated : i));
+        toast.success("Arsip berhasil diperbarui!");
       } else {
         const created = await api.admin.createArchive(payload);
         setItems(prev => [created, ...prev]);
+        toast.success("Arsip berhasil ditambahkan!");
       }
       setModal(undefined);
     } catch (err) {
       console.error("Gagal menyimpan arsip:", err);
-      alert("Gagal menyimpan arsip.");
+      toast.error("Gagal menyimpan arsip.");
     }
   };
 
@@ -176,9 +179,10 @@ export default function AdminArsip() {
       await api.admin.deleteArchive(id);
       setItems(prev => prev.filter(i => i.id !== id));
       setDeleteId(null);
+      toast.success("Arsip berhasil dihapus!");
     } catch (err) {
       console.error("Gagal menghapus arsip:", err);
-      alert("Gagal menghapus arsip.");
+      toast.error("Gagal menghapus arsip.");
     }
   };
 

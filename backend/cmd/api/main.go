@@ -56,6 +56,7 @@ func main() {
 	archiveHandler := handler.NewArchiveHandler(archiveSvc)
 	tagHandler := handler.NewTagHandler(tagRepo)
 	orgHandler := handler.NewOrganizationHandler(orgRepo)
+	uploadHandler := handler.NewUploadHandler(cfg)
 
 	requireAuth := appmw.RequireAuth(authSvc)
 
@@ -91,6 +92,9 @@ func main() {
 	mux.HandleFunc("GET /api/v1/organization-members", orgHandler.List)
 
 	// ---------- Admin routes (dilindungi JWT) ----------
+	// Upload gambar (multipart, maks 5 MB; JPEG/PNG/WEBP)
+	mux.Handle("POST /api/v1/admin/upload", requireAuth(http.HandlerFunc(uploadHandler.Upload)))
+
 	mux.Handle("GET /api/v1/admin/news", requireAuth(http.HandlerFunc(newsHandler.AdminList)))
 	mux.Handle("GET /api/v1/admin/news/{id}", requireAuth(http.HandlerFunc(newsHandler.AdminGetByID)))
 	mux.Handle("POST /api/v1/admin/news", requireAuth(http.HandlerFunc(newsHandler.Create)))
@@ -110,6 +114,13 @@ func main() {
 	mux.Handle("PUT /api/v1/admin/archive-documents/{id}", requireAuth(http.HandlerFunc(archiveHandler.Update)))
 	mux.Handle("DELETE /api/v1/admin/archive-documents/{id}", requireAuth(http.HandlerFunc(archiveHandler.Delete)))
 	mux.Handle("PUT /api/v1/admin/organization-members", requireAuth(http.HandlerFunc(orgHandler.UpdateBulk)))
+
+	// Static file server untuk upload lokal (digunakan saat R2 tidak dikonfigurasi)
+	uploadDir := cfg.UploadDir
+	if uploadDir == "" {
+		uploadDir = "uploads"
+	}
+	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
 	var rootHandler http.Handler = mux
 	rootHandler = appmw.CORS(cfg.CORSOrigin)(rootHandler)

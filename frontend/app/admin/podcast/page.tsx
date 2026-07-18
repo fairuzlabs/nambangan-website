@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Pencil, Trash2, X, Headphones, Clock, User } from "lucide-react";
 import { api, type PodcastEpisode } from "@/lib/api";
+import { toast } from "sonner";
 import { FaYoutube } from "react-icons/fa";
 
 const CATEGORIES = ["Proklim", "Pengelolaan Sampah", "Pertanian Urban", "Konservasi Air", "Kesehatan & Lingkungan", "Edukasi Iklim"];
@@ -156,14 +157,16 @@ export default function AdminPodcast() {
       if (exists) {
         const updated = await api.admin.updatePodcast(item.id, payload);
         setItems(prev => prev.map(i => i.id === item.id ? updated : i));
+        toast.success("Episode podcast berhasil diperbarui!");
       } else {
         const created = await api.admin.createPodcast(payload);
         setItems(prev => [created, ...prev]);
+        toast.success("Episode podcast berhasil ditambahkan!");
       }
       setModal(undefined);
     } catch (err) {
       console.error("Gagal menyimpan episode:", err);
-      alert("Gagal menyimpan episode.");
+      toast.error("Gagal menyimpan episode.");
     }
   };
 
@@ -172,9 +175,10 @@ export default function AdminPodcast() {
       await api.admin.deletePodcast(id);
       setItems(prev => prev.filter(i => i.id !== id));
       setDeleteId(null);
+      toast.success("Episode podcast berhasil dihapus!");
     } catch (err) {
       console.error("Gagal menghapus episode:", err);
-      alert("Gagal menghapus episode.");
+      toast.error("Gagal menghapus episode.");
     }
   };
 

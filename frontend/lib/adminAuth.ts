@@ -19,7 +19,9 @@ export const isAuthenticated = (): boolean => {
 export const adminLogin = async (username: string, password: string): Promise<boolean> => {
   try {
     // Determine API URL based on host/environment
-    const apiBase = typeof window !== "undefined" ? "/api/v1" : "http://backend:8080/api/v1";
+    const apiBase = typeof window !== "undefined"
+      ? (process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1")
+      : (process.env.API_BASE_URL || "http://backend:8080/api/v1");
     
     const response = await fetch(`${apiBase}/admin/login`, {
       method: "POST",
