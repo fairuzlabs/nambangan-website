@@ -7,13 +7,6 @@ export const dynamic = "force-dynamic";
 
 const HERO_IMG = "https://images.unsplash.com/photo-1565583673900-1cd9320f6c8b?w=1920&h=1080&fit=crop&auto=format&q=80";
 
-const STATS = [
-  { value: "500+", label: "Kepala Keluarga", icon: Users, color: "text-green-700" },
-  { value: "5",    label: "Lokasi Proklim",  icon: Sprout, color: "text-red-600" },
-  { value: "25+",  label: "Pelaku UMKM",     icon: ShoppingBag, color: "text-amber-600" },
-  { value: "4",    label: "Spot Kesenian",    icon: MapPin, color: "text-green-700" },
-];
-
 export default async function Home() {
   let fetchedNews: any[] = [];
   try {
@@ -22,6 +15,32 @@ export default async function Home() {
   } catch (err) {
     console.error("Gagal mengambil berita di homepage:", err);
   }
+
+  let mapPoints: any[] = [];
+  try {
+    mapPoints = await api.getMapPoints();
+  } catch (err) {
+    console.error("Gagal mengambil data peta di homepage:", err);
+  }
+
+  let archiveCount = 0;
+  try {
+    const archives = await api.getArchives();
+    archiveCount = archives.length;
+  } catch (err) {
+    console.error("Gagal mengambil data arsip di homepage:", err);
+  }
+
+  const proklimCount = mapPoints.filter((p) => p.locType === "proklim").length;
+  const umkmCount = mapPoints.filter((p) => p.locType === "umkm").length;
+  const kesenianCount = mapPoints.filter((p) => p.locType === "kesenian").length;
+
+  const stats = [
+    { value: `${archiveCount}`, label: "Dokumen Arsip", icon: Archive, color: "text-green-700" },
+    { value: `${proklimCount}`, label: "Lokasi Proklim", icon: Sprout, color: "text-red-600" },
+    { value: `${umkmCount}`, label: "Pelaku UMKM", icon: ShoppingBag, color: "text-amber-600" },
+    { value: `${kesenianCount}`, label: "Spot Kesenian", icon: MapPin, color: "text-green-700" },
+  ];
 
   const featured = fetchedNews[0] || {
     id: "",
@@ -111,7 +130,7 @@ export default async function Home() {
       <section className="bg-white border-y border-gray-200">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-200">
-            {STATS.map(({ value, label, icon: Icon, color }) => (
+            {stats.map(({ value, label, icon: Icon, color }) => (
               <div key={label} className="flex flex-col items-center py-7 px-4 gap-2">
                 <Icon className={`w-5 h-5 ${color}`} />
                 <span className="text-3xl font-bold text-gray-900" style={{ fontFamily: "var(--font-serif)" }}>{value}</span>

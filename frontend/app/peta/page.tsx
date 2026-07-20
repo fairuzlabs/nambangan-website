@@ -24,6 +24,17 @@ function createDivIcon(type: keyof typeof TYPE_META, selected = false) {
   const color = TYPE_META[type].color;
   const size = selected ? 38 : 30;
   const border = selected ? 4 : 3;
+  const iconSize = selected ? 18 : 14;
+
+  let iconSvg = "";
+  if (type === "proklim") {
+    iconSvg = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 2 7a7 7 0 0 1-7 7h-3Z"/><path d="M9 22v-4h4"/></svg>`;
+  } else if (type === "umkm") {
+    iconSvg = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>`;
+  } else if (type === "kesenian") {
+    iconSvg = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
+  }
+
   return {
     className: "",
     html: `<div style="
@@ -34,10 +45,10 @@ function createDivIcon(type: keyof typeof TYPE_META, selected = false) {
       box-shadow:0 3px 10px rgba(0,0,0,0.4);
       transition:all .2s;
       display:flex;align-items:center;justify-content:center;
-    "></div>`,
+    ">${iconSvg}</div>`,
     iconSize: [size, size] as [number, number],
-    iconAnchor: [size / 2, size] as [number, number],
-    popupAnchor: [0, -size] as [number, number],
+    iconAnchor: [size / 2, size / 2] as [number, number],
+    popupAnchor: [0, -size / 2] as [number, number],
   };
 }
 
@@ -114,12 +125,6 @@ function DetailPanel({ selected, onClose }: { selected: SelectedPoint; onClose: 
             >
               <Phone className="w-4 h-4" /> Hubungi via WhatsApp
             </a>
-            <Link
-              href={`/umkm/${p.id}`}
-              className="w-full flex items-center justify-center gap-2 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-            >
-              Detail Produk <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
           </div>
         </div>
       </div>
@@ -218,7 +223,7 @@ export default function Peta() {
       // @ts-ignore
       delete L.Icon.Default.prototype._getIconUrl;
 
-      const map = L.map(mapRef.current!).setView([-7.4705, 110.21800], 16);
+      const map = L.map(mapRef.current!).setView([-7.48333288952336, 110.23033883249016], 18);
       mapInstanceRef.current = map;
       setMapInstance(map);
 
@@ -254,31 +259,41 @@ export default function Peta() {
         if (!lat || !lng) return;
 
         validCoords.push([lat, lng]);
-        const iconOpts = createDivIcon(point.type);
+        const isPointSelected = selected?.data?.id === point.data.id;
+        const iconOpts = createDivIcon(point.type, isPointSelected);
         const marker = L.marker([lat, lng], { icon: L.divIcon(iconOpts) }).addTo(mapInstance);
         marker.on("click", () => setSelected(point));
         markersRef.current.push(marker);
       });
 
-      // Auto-fit bounds to show all markers when first loading (no selected point)
+      // We disabled bounds auto-fit on load to keep the map focused on the Balai RW coordinates
       if (validCoords.length > 0 && !selected) {
-        const bounds = L.latLngBounds(validCoords);
-        mapInstance.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
+        // mapInstance.setView([-7.48333288952336, 110.23033883249016], 18);
       }
     });
-  }, [mapInstance, points, filter]);
+  }, [mapInstance, points, filter, selected]);
 
-  // Fly to selected point
+  // Handle map resizing and fly to selected point smoothly
   useEffect(() => {
-    if (!mapInstance || !selected) return;
-    const lat = (selected.data as any).lat;
-    const lng = (selected.data as any).lng;
-    if (lat && lng) {
-      mapInstance.flyTo([lat, lng], 17, {
-        duration: 1.5,
-        easeLinearity: 0.25
-      });
+    if (!mapInstance) return;
+
+    // Trigger map invalidation with a small timeout to let the CSS slide transition complete
+    const timer = setTimeout(() => {
+      mapInstance.invalidateSize();
+    }, 350);
+
+    if (selected) {
+      const lat = (selected.data as any).lat;
+      const lng = (selected.data as any).lng;
+      if (lat && lng) {
+        mapInstance.flyTo([lat, lng], 18, {
+          duration: 1.2,
+          easeLinearity: 0.2
+        });
+      }
     }
+
+    return () => clearTimeout(timer);
   }, [selected, mapInstance]);
 
   const counts = {

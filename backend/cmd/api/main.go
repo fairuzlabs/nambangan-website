@@ -39,6 +39,7 @@ func main() {
 	archiveRepo := repository.NewArchiveRepository(pool)
 	adminRepo := repository.NewAdminRepository(pool)
 	tagRepo := repository.NewTagRepository(pool)
+	orgRepo := repository.NewOrganizationRepository(pool)
 
 	// Services
 	authSvc := service.NewAuthService(adminRepo, cfg.JWTSecret, cfg.JWTTTL)
@@ -54,6 +55,7 @@ func main() {
 	podcastHandler := handler.NewPodcastHandler(podcastSvc)
 	archiveHandler := handler.NewArchiveHandler(archiveSvc)
 	tagHandler := handler.NewTagHandler(tagRepo)
+	orgHandler := handler.NewOrganizationHandler(orgRepo)
 	uploadHandler := handler.NewUploadHandler(cfg)
 
 	requireAuth := appmw.RequireAuth(authSvc)
@@ -87,6 +89,7 @@ func main() {
 	mux.HandleFunc("GET /api/v1/archive-documents/{id}", archiveHandler.GetByID)
 
 	mux.HandleFunc("GET /api/v1/tags", tagHandler.List)
+	mux.HandleFunc("GET /api/v1/organization-members", orgHandler.List)
 
 	// ---------- Admin routes (dilindungi JWT) ----------
 	// Upload gambar (multipart, maks 5 MB; JPEG/PNG/WEBP)
@@ -110,6 +113,7 @@ func main() {
 	mux.Handle("POST /api/v1/admin/archive-documents", requireAuth(http.HandlerFunc(archiveHandler.Create)))
 	mux.Handle("PUT /api/v1/admin/archive-documents/{id}", requireAuth(http.HandlerFunc(archiveHandler.Update)))
 	mux.Handle("DELETE /api/v1/admin/archive-documents/{id}", requireAuth(http.HandlerFunc(archiveHandler.Delete)))
+	mux.Handle("PUT /api/v1/admin/organization-members", requireAuth(http.HandlerFunc(orgHandler.UpdateBulk)))
 
 	// Static file server untuk upload lokal (digunakan saat R2 tidak dikonfigurasi)
 	uploadDir := cfg.UploadDir
