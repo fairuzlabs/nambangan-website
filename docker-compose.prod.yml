@@ -1,35 +1,12 @@
 services:
-  db:
-    image: postgres:16
-    container_name: rw18_db
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-rw18}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: ./backend
     container_name: rw18_backend
     restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
     environment:
       PORT: 8080
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-rw18}?sslmode=disable
+      DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       R2_ACCESS_KEY: ${R2_ACCESS_KEY:-}
       R2_SECRET_KEY: ${R2_SECRET_KEY:-}
@@ -70,27 +47,8 @@ services:
     networks:
       - internal
 
-  # ========================================================
-  # SERVICE PGADMIN (TAMBAHAN BARU)
-  # ========================================================
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: rw18_pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@email.com      # Ganti sesuai email keinginan Anda
-      PGADMIN_DEFAULT_PASSWORD: adminpassword      # Ganti sesuai password keinginan Anda
-    ports:
-      - "5050:80"                                 # Akses UI lewat http://localhost:5050
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - internal
-
 networks:
   internal:
 
 volumes:
-  pgdata:
   uploads_data:
